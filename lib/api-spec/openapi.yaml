@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: game
+    description: Игровые данные и действия
 paths:
   /healthz:
     get:
@@ -24,6 +26,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /game/dashboard:
+    get:
+      operationId: getGameDashboard
+      tags: [game]
+      summary: Получить обзор мира и героя
+      parameters:
+        - name: playerId
+          in: query
+          required: false
+          schema: { type: string, default: demo }
+      responses:
+        "200":
+          description: Игровая панель
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameDashboard"
+  /game/action:
+    post:
+      operationId: performGameAction
+      tags: [game]
+      summary: Выполнить действие в игре
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameActionInput"
+      responses:
+        "200":
+          description: Результат действия и обновлённое состояние
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameActionResult"
+        "400":
+          description: Действие невозможно
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +76,146 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    GamePlayer:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        heroClass: { type: string }
+        level: { type: integer }
+        xp: { type: integer }
+        xpToNext: { type: integer }
+        gold: { type: integer }
+        crystals: { type: integer }
+        health: { type: integer }
+        maxHealth: { type: integer }
+        attack: { type: integer }
+        realm: { type: string }
+        title: { type: string }
+        guildName: { type: ["string", "null"] }
+        spouseName: { type: ["string", "null"] }
+        vip: { type: boolean }
+      required: [id, name, heroClass, level, xp, xpToNext, gold, crystals, health, maxHealth, attack, realm, title, guildName, spouseName, vip]
+    GameItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        icon: { type: string }
+        rarity: { type: string }
+        category: { type: string }
+        equipped: { type: boolean }
+        attack: { type: integer }
+        defense: { type: integer }
+        price: { type: integer }
+        quantity: { type: integer }
+      required: [id, name, icon, rarity, category, equipped, attack, defense, price, quantity]
+    GamePet:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        species: { type: string }
+        level: { type: integer }
+        rarity: { type: string }
+        attack: { type: integer }
+        health: { type: integer }
+        experience: { type: integer }
+        active: { type: boolean }
+        vip: { type: boolean }
+        evolution: { type: string }
+      required: [id, name, species, level, rarity, attack, health, experience, active, vip, evolution]
+    MarriageRecord:
+      type: object
+      properties:
+        id: { type: string }
+        partnerName: { type: string }
+        marriedAt: { type: string, format: date-time }
+        divorcedAt: { type: ["string", "null"], format: date-time }
+        durationDays: { type: integer }
+      required: [id, partnerName, marriedAt, divorcedAt, durationDays]
+    GameActivity:
+      type: object
+      properties:
+        id: { type: string }
+        message: { type: string }
+        category: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, message, category, createdAt]
+    WorldBoss:
+      type: object
+      properties:
+        name: { type: string }
+        phase: { type: integer }
+        health: { type: integer }
+        maxHealth: { type: integer }
+        participants: { type: integer }
+      required: [name, phase, health, maxHealth, participants]
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank: { type: integer }
+        name: { type: string }
+        heroClass: { type: string }
+        level: { type: integer }
+        score: { type: integer }
+      required: [rank, name, heroClass, level, score]
+    ShopItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        icon: { type: string }
+        description: { type: string }
+        price: { type: integer }
+        currency: { type: string }
+        rarity: { type: string }
+      required: [id, name, icon, description, price, currency, rarity]
+    GameDashboard:
+      type: object
+      properties:
+        player: { $ref: "#/components/schemas/GamePlayer" }
+        inventory:
+          type: array
+          items: { $ref: "#/components/schemas/GameItem" }
+        pets:
+          type: array
+          items: { $ref: "#/components/schemas/GamePet" }
+        marriageHistory:
+          type: array
+          items: { $ref: "#/components/schemas/MarriageRecord" }
+        activity:
+          type: array
+          items: { $ref: "#/components/schemas/GameActivity" }
+        worldBoss: { $ref: "#/components/schemas/WorldBoss" }
+        leaderboard:
+          type: array
+          items: { $ref: "#/components/schemas/LeaderboardEntry" }
+        shop:
+          type: array
+          items: { $ref: "#/components/schemas/ShopItem" }
+      required: [player, inventory, pets, marriageHistory, activity, worldBoss, leaderboard, shop]
+    GameActionInput:
+      type: object
+      properties:
+        playerId: { type: string }
+        playerName: { type: string }
+        action:
+          type: string
+          enum: [register, claim_daily, battle, equip_item, buy_item, feed_pet, evolve_pet, raid_attack, marriage_propose, marriage_divorce, join_guild]
+        targetId: { type: string }
+        targetName: { type: string }
+      required: [action]
+    GameActionResult:
+      type: object
+      properties:
+        message: { type: string }
+        dashboard: { $ref: "#/components/schemas/GameDashboard" }
+      required: [message, dashboard]
 
