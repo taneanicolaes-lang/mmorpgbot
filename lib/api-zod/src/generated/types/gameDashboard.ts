@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { GameActivity } from './gameActivity';
+import type { GameClass } from './gameClass';
 import type { GameItem } from './gameItem';
 import type { GamePet } from './gamePet';
 import type { GamePlayer } from './gamePlayer';
+import type { GameRecipe } from './gameRecipe';
 import type { LeaderboardEntry } from './leaderboardEntry';
 import type { MarriageRecord } from './marriageRecord';
 import type { ShopItem } from './shopItem';
@@ -23,4 +25,6 @@ export interface GameDashboard {
   worldBoss: WorldBoss;
   leaderboard: LeaderboardEntry[];
   shop: ShopItem[];
+  classes: GameClass[];
+  recipes: GameRecipe[];
 }

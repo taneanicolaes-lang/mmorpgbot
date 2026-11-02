@@ -10,9 +10,14 @@ import {
   useQuery
 } from '@tanstack/react-query';
 import type {
+  DataTag,
+  DefinedInitialDataOptions,
+  DefinedUseQueryResult,
   MutationFunction,
+  QueryClient,
   QueryFunction,
   QueryKey,
+  UndefinedInitialDataOptions,
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
@@ -20,12 +25,21 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AuctionActionResult,
+  AuctionListingsResponse,
+  AuctionPlayerInput,
+  ClaimTelegramLinkInput,
+  CreateAuctionListingInput,
   ErrorResponse,
   GameActionInput,
   GameActionResult,
   GameDashboard,
+  GetAuctionListingsParams,
   GetGameDashboardParams,
-  HealthStatus
+  HealthStatus,
+  StartTelegramLinkInput,
+  TelegramLinkClaimResult,
+  TelegramLinkStartResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -89,7 +103,7 @@ export const getHealthCheckQueryKey = () => {
     }
 
 
-export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -104,25 +118,49 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
 export type HealthCheckQueryResult = NonNullable<Awaited<ReturnType<typeof healthCheck>>>
 export type HealthCheckQueryError = ErrorType<unknown>
 
 
+export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof healthCheck>>,
+          TError,
+          Awaited<ReturnType<typeof healthCheck>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof healthCheck>>,
+          TError,
+          Awaited<ReturnType<typeof healthCheck>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary Health check
  */
 
 export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
 
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
   return withQueryKey(query, queryOptions.queryKey);
 }
@@ -173,7 +211,7 @@ export const getGetGameDashboardQueryKey = (params?: GetGameDashboardParams,) =>
     }
 
 
-export const getGetGameDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getGameDashboard>>, TError = ErrorType<unknown>>(params?: GetGameDashboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGameDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetGameDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getGameDashboard>>, TError = ErrorType<unknown>>(params?: GetGameDashboardParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGameDashboard>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -188,25 +226,49 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGameDashboard>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGameDashboard>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
 export type GetGameDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getGameDashboard>>>
 export type GetGameDashboardQueryError = ErrorType<unknown>
 
 
+export function useGetGameDashboard<TData = Awaited<ReturnType<typeof getGameDashboard>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetGameDashboardParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGameDashboard>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getGameDashboard>>,
+          TError,
+          Awaited<ReturnType<typeof getGameDashboard>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetGameDashboard<TData = Awaited<ReturnType<typeof getGameDashboard>>, TError = ErrorType<unknown>>(
+ params?: GetGameDashboardParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGameDashboard>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getGameDashboard>>,
+          TError,
+          Awaited<ReturnType<typeof getGameDashboard>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetGameDashboard<TData = Awaited<ReturnType<typeof getGameDashboard>>, TError = ErrorType<unknown>>(
+ params?: GetGameDashboardParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGameDashboard>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary Получить обзор мира и героя
  */
 
 export function useGetGameDashboard<TData = Awaited<ReturnType<typeof getGameDashboard>>, TError = ErrorType<unknown>>(
- params?: GetGameDashboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGameDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+ params?: GetGameDashboardParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGameDashboard>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetGameDashboardQueryOptions(params,options)
 
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
   return withQueryKey(query, queryOptions.queryKey);
 }
@@ -296,12 +358,562 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  */
 export const usePerformGameAction = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof performGameAction>>, TError,PerformGameActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
+ , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof performGameAction>>,
         TError,
         PerformGameActionMutationVariables,
         TContext
       > => {
-      return useMutation(getPerformGameActionMutationOptions(options));
+      return useMutation(getPerformGameActionMutationOptions(options), queryClient);
+    }
+
+export const getGetAuctionListingsUrl = (params?: GetAuctionListingsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/game/auction?${stringifiedParams}` : `/api/game/auction`
+}
+
+/**
+ * @summary Получить активные лоты аукциона
+ */
+export const getAuctionListings = async (params?: GetAuctionListingsParams, options?: Parameters<typeof customFetch>[1]): Promise<AuctionListingsResponse> => {
+
+  return customFetch<AuctionListingsResponse>(getGetAuctionListingsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAuctionListingsQueryKey = (params?: GetAuctionListingsParams,) => {
+    return [
+    `/api/game/auction`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAuctionListingsQueryOptions = <TData = Awaited<ReturnType<typeof getAuctionListings>>, TError = ErrorType<unknown>>(params?: GetAuctionListingsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuctionListings>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAuctionListingsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuctionListings>>> = ({ signal }) => getAuctionListings(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAuctionListings>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAuctionListingsQueryResult = NonNullable<Awaited<ReturnType<typeof getAuctionListings>>>
+export type GetAuctionListingsQueryError = ErrorType<unknown>
+
+
+export function useGetAuctionListings<TData = Awaited<ReturnType<typeof getAuctionListings>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetAuctionListingsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuctionListings>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuctionListings>>,
+          TError,
+          Awaited<ReturnType<typeof getAuctionListings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuctionListings<TData = Awaited<ReturnType<typeof getAuctionListings>>, TError = ErrorType<unknown>>(
+ params?: GetAuctionListingsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuctionListings>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuctionListings>>,
+          TError,
+          Awaited<ReturnType<typeof getAuctionListings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuctionListings<TData = Awaited<ReturnType<typeof getAuctionListings>>, TError = ErrorType<unknown>>(
+ params?: GetAuctionListingsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuctionListings>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Получить активные лоты аукциона
+ */
+
+export function useGetAuctionListings<TData = Awaited<ReturnType<typeof getAuctionListings>>, TError = ErrorType<unknown>>(
+ params?: GetAuctionListingsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuctionListings>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAuctionListingsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAuctionListingUrl = () => {
+
+
+
+
+  return `/api/game/auction`
+}
+
+/**
+ * @summary Выставить предмет на аукцион
+ */
+export const createAuctionListing = async (createAuctionListingInput: CreateAuctionListingInput, options?: Parameters<typeof customFetch>[1]): Promise<AuctionActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AuctionActionResult>(getCreateAuctionListingUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createAuctionListingInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAuctionListingMutationKey = () => ['createAuctionListing'] as const;
+
+export const getCreateAuctionListingMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAuctionListing>>, TError,CreateAuctionListingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAuctionListing>>, TError,CreateAuctionListingMutationVariables, TContext> => {
+
+const mutationKey = getCreateAuctionListingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAuctionListing>>, CreateAuctionListingMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAuctionListing(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAuctionListingMutationResult = NonNullable<Awaited<ReturnType<typeof createAuctionListing>>>
+    export type CreateAuctionListingMutationBody = BodyType<CreateAuctionListingInput>
+    export type CreateAuctionListingMutationError = ErrorType<ErrorResponse>
+    export type CreateAuctionListingMutationVariables = {data: BodyType<CreateAuctionListingInput>}
+
+    /**
+ * @summary Выставить предмет на аукцион
+ */
+export const useCreateAuctionListing = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAuctionListing>>, TError,CreateAuctionListingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createAuctionListing>>,
+        TError,
+        CreateAuctionListingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAuctionListingMutationOptions(options), queryClient);
+    }
+
+export const getBuyAuctionListingUrl = (listingId: string,) => {
+
+
+
+
+  return `/api/game/auction/${listingId}/buy`
+}
+
+/**
+ * @summary Купить лот у другого игрока
+ */
+export const buyAuctionListing = async (listingId: string,
+    auctionPlayerInput: AuctionPlayerInput, options?: Parameters<typeof customFetch>[1]): Promise<AuctionActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AuctionActionResult>(getBuyAuctionListingUrl(listingId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(auctionPlayerInput)
+  }
+);}
+
+
+
+
+
+export const getBuyAuctionListingMutationKey = () => ['buyAuctionListing'] as const;
+
+export const getBuyAuctionListingMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof buyAuctionListing>>, TError,BuyAuctionListingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof buyAuctionListing>>, TError,BuyAuctionListingMutationVariables, TContext> => {
+
+const mutationKey = getBuyAuctionListingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof buyAuctionListing>>, BuyAuctionListingMutationVariables> = (props) => {
+          const {listingId,data} = props ?? {};
+
+          return  buyAuctionListing(listingId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BuyAuctionListingMutationResult = NonNullable<Awaited<ReturnType<typeof buyAuctionListing>>>
+    export type BuyAuctionListingMutationBody = BodyType<AuctionPlayerInput>
+    export type BuyAuctionListingMutationError = ErrorType<ErrorResponse>
+    export type BuyAuctionListingMutationVariables = {listingId: string;data: BodyType<AuctionPlayerInput>}
+
+    /**
+ * @summary Купить лот у другого игрока
+ */
+export const useBuyAuctionListing = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof buyAuctionListing>>, TError,BuyAuctionListingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof buyAuctionListing>>,
+        TError,
+        BuyAuctionListingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBuyAuctionListingMutationOptions(options), queryClient);
+    }
+
+export const getCancelAuctionListingUrl = (listingId: string,) => {
+
+
+
+
+  return `/api/game/auction/${listingId}/cancel`
+}
+
+/**
+ * @summary Снять свой лот с торгов
+ */
+export const cancelAuctionListing = async (listingId: string,
+    auctionPlayerInput: AuctionPlayerInput, options?: Parameters<typeof customFetch>[1]): Promise<AuctionActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AuctionActionResult>(getCancelAuctionListingUrl(listingId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(auctionPlayerInput)
+  }
+);}
+
+
+
+
+
+export const getCancelAuctionListingMutationKey = () => ['cancelAuctionListing'] as const;
+
+export const getCancelAuctionListingMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAuctionListing>>, TError,CancelAuctionListingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelAuctionListing>>, TError,CancelAuctionListingMutationVariables, TContext> => {
+
+const mutationKey = getCancelAuctionListingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelAuctionListing>>, CancelAuctionListingMutationVariables> = (props) => {
+          const {listingId,data} = props ?? {};
+
+          return  cancelAuctionListing(listingId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelAuctionListingMutationResult = NonNullable<Awaited<ReturnType<typeof cancelAuctionListing>>>
+    export type CancelAuctionListingMutationBody = BodyType<AuctionPlayerInput>
+    export type CancelAuctionListingMutationError = ErrorType<ErrorResponse>
+    export type CancelAuctionListingMutationVariables = {listingId: string;data: BodyType<AuctionPlayerInput>}
+
+    /**
+ * @summary Снять свой лот с торгов
+ */
+export const useCancelAuctionListing = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAuctionListing>>, TError,CancelAuctionListingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof cancelAuctionListing>>,
+        TError,
+        CancelAuctionListingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCancelAuctionListingMutationOptions(options), queryClient);
+    }
+
+export const getStartTelegramLinkUrl = () => {
+
+
+
+
+  return `/api/game/link/start`
+}
+
+/**
+ * @summary Создать одноразовый код привязки Telegram
+ */
+export const startTelegramLink = async (startTelegramLinkInput: StartTelegramLinkInput, options?: Parameters<typeof customFetch>[1]): Promise<TelegramLinkStartResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TelegramLinkStartResult>(getStartTelegramLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(startTelegramLinkInput)
+  }
+);}
+
+
+
+
+
+export const getStartTelegramLinkMutationKey = () => ['startTelegramLink'] as const;
+
+export const getStartTelegramLinkMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startTelegramLink>>, TError,StartTelegramLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startTelegramLink>>, TError,StartTelegramLinkMutationVariables, TContext> => {
+
+const mutationKey = getStartTelegramLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startTelegramLink>>, StartTelegramLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startTelegramLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartTelegramLinkMutationResult = NonNullable<Awaited<ReturnType<typeof startTelegramLink>>>
+    export type StartTelegramLinkMutationBody = BodyType<StartTelegramLinkInput>
+    export type StartTelegramLinkMutationError = ErrorType<ErrorResponse>
+    export type StartTelegramLinkMutationVariables = {data: BodyType<StartTelegramLinkInput>}
+
+    /**
+ * @summary Создать одноразовый код привязки Telegram
+ */
+export const useStartTelegramLink = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startTelegramLink>>, TError,StartTelegramLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startTelegramLink>>,
+        TError,
+        StartTelegramLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartTelegramLinkMutationOptions(options), queryClient);
+    }
+
+export const getClaimTelegramLinkUrl = () => {
+
+
+
+
+  return `/api/game/link/claim`
+}
+
+/**
+ * @summary Подтвердить привязку из Telegram-бота
+ */
+export const claimTelegramLink = async (claimTelegramLinkInput: ClaimTelegramLinkInput, options?: Parameters<typeof customFetch>[1]): Promise<TelegramLinkClaimResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TelegramLinkClaimResult>(getClaimTelegramLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(claimTelegramLinkInput)
+  }
+);}
+
+
+
+
+
+export const getClaimTelegramLinkMutationKey = () => ['claimTelegramLink'] as const;
+
+export const getClaimTelegramLinkMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof claimTelegramLink>>, TError,ClaimTelegramLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof claimTelegramLink>>, TError,ClaimTelegramLinkMutationVariables, TContext> => {
+
+const mutationKey = getClaimTelegramLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof claimTelegramLink>>, ClaimTelegramLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  claimTelegramLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClaimTelegramLinkMutationResult = NonNullable<Awaited<ReturnType<typeof claimTelegramLink>>>
+    export type ClaimTelegramLinkMutationBody = BodyType<ClaimTelegramLinkInput>
+    export type ClaimTelegramLinkMutationError = ErrorType<ErrorResponse>
+    export type ClaimTelegramLinkMutationVariables = {data: BodyType<ClaimTelegramLinkInput>}
+
+    /**
+ * @summary Подтвердить привязку из Telegram-бота
+ */
+export const useClaimTelegramLink = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof claimTelegramLink>>, TError,ClaimTelegramLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof claimTelegramLink>>,
+        TError,
+        ClaimTelegramLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getClaimTelegramLinkMutationOptions(options), queryClient);
     }
 

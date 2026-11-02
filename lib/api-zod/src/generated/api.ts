@@ -26,11 +26,18 @@ export const GetGameDashboardQueryParams = zod.object({
   "playerId": zod.coerce.string().default(getGameDashboardQueryPlayerIdDefault)
 })
 
+export const getGameDashboardResponsePlayerTalentPointsDefault = 0;
+export const getGameDashboardResponsePlayerTelegramLinkedDefault = false;
+
 export const GetGameDashboardResponse = zod.object({
   "player": zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "heroClass": zod.string(),
+  "classId": zod.string(),
+  "talentPoints": zod.number().int().default(getGameDashboardResponsePlayerTalentPointsDefault),
+  "unlockedTalents": zod.array(zod.string()),
+  "telegramLinked": zod.boolean().default(getGameDashboardResponsePlayerTelegramLinkedDefault),
   "level": zod.number().int(),
   "xp": zod.number().int(),
   "xpToNext": zod.number().int(),
@@ -105,6 +112,51 @@ export const GetGameDashboardResponse = zod.object({
   "price": zod.number().int(),
   "currency": zod.string(),
   "rarity": zod.string()
+})),
+  "classes": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "description": zod.string(),
+  "passive": zod.string(),
+  "branches": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "talents": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "cost": zod.number().int(),
+  "requires": zod.string().nullable(),
+  "effectType": zod.enum(['attack', 'critical', 'guard', 'healing', 'resource', 'control']),
+  "effectValue": zod.number().int()
+}))
+}))
+})),
+  "recipes": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "requiredLevel": zod.number().int(),
+  "goldCost": zod.number().int(),
+  "ingredients": zod.array(zod.object({
+  "itemId": zod.string(),
+  "name": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "result": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "rarity": zod.string(),
+  "category": zod.string(),
+  "equipped": zod.boolean(),
+  "attack": zod.number().int(),
+  "defense": zod.number().int(),
+  "price": zod.number().int(),
+  "quantity": zod.number().int()
+})
 }))
 })
 
@@ -115,10 +167,13 @@ export const GetGameDashboardResponse = zod.object({
 export const PerformGameActionBody = zod.object({
   "playerId": zod.string().optional(),
   "playerName": zod.string().optional(),
-  "action": zod.enum(['register', 'claim_daily', 'battle', 'equip_item', 'buy_item', 'feed_pet', 'evolve_pet', 'raid_attack', 'marriage_propose', 'marriage_divorce', 'join_guild']),
+  "action": zod.enum(['register', 'claim_daily', 'battle', 'equip_item', 'buy_item', 'feed_pet', 'evolve_pet', 'raid_attack', 'marriage_propose', 'marriage_divorce', 'join_guild', 'select_class', 'unlock_talent', 'craft_item']),
   "targetId": zod.string().optional(),
   "targetName": zod.string().optional()
 })
+
+export const performGameActionResponseDashboardPlayerTalentPointsDefault = 0;
+export const performGameActionResponseDashboardPlayerTelegramLinkedDefault = false;
 
 export const PerformGameActionResponse = zod.object({
   "message": zod.string(),
@@ -127,6 +182,10 @@ export const PerformGameActionResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "heroClass": zod.string(),
+  "classId": zod.string(),
+  "talentPoints": zod.number().int().default(performGameActionResponseDashboardPlayerTalentPointsDefault),
+  "unlockedTalents": zod.array(zod.string()),
+  "telegramLinked": zod.boolean().default(performGameActionResponseDashboardPlayerTelegramLinkedDefault),
   "level": zod.number().int(),
   "xp": zod.number().int(),
   "xpToNext": zod.number().int(),
@@ -201,8 +260,574 @@ export const PerformGameActionResponse = zod.object({
   "price": zod.number().int(),
   "currency": zod.string(),
   "rarity": zod.string()
+})),
+  "classes": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "description": zod.string(),
+  "passive": zod.string(),
+  "branches": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "talents": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "cost": zod.number().int(),
+  "requires": zod.string().nullable(),
+  "effectType": zod.enum(['attack', 'critical', 'guard', 'healing', 'resource', 'control']),
+  "effectValue": zod.number().int()
+}))
+}))
+})),
+  "recipes": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "requiredLevel": zod.number().int(),
+  "goldCost": zod.number().int(),
+  "ingredients": zod.array(zod.object({
+  "itemId": zod.string(),
+  "name": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "result": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "rarity": zod.string(),
+  "category": zod.string(),
+  "equipped": zod.boolean(),
+  "attack": zod.number().int(),
+  "defense": zod.number().int(),
+  "price": zod.number().int(),
+  "quantity": zod.number().int()
+})
 }))
 })
+})
+
+
+/**
+ * @summary Получить активные лоты аукциона
+ */
+export const GetAuctionListingsQueryParams = zod.object({
+  "playerId": zod.coerce.string().optional()
+})
+
+export const GetAuctionListingsResponse = zod.object({
+  "listings": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "sellerName": zod.string(),
+  "item": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "rarity": zod.string(),
+  "category": zod.string(),
+  "equipped": zod.boolean(),
+  "attack": zod.number().int(),
+  "defense": zod.number().int(),
+  "price": zod.number().int(),
+  "quantity": zod.number().int()
+}),
+  "quantity": zod.number().int(),
+  "price": zod.number().int(),
+  "currency": zod.enum(['gold', 'crystals']),
+  "isMine": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})),
+  "feePercent": zod.number().int()
+})
+
+
+/**
+ * @summary Выставить предмет на аукцион
+ */
+export const createAuctionListingBodyQuantityMax = 99;
+
+export const createAuctionListingBodyPriceMax = 1000000000;
+
+
+
+export const CreateAuctionListingBody = zod.object({
+  "playerId": zod.string(),
+  "itemId": zod.string(),
+  "quantity": zod.number().int().min(1).max(createAuctionListingBodyQuantityMax),
+  "price": zod.number().int().min(1).max(createAuctionListingBodyPriceMax),
+  "currency": zod.enum(['gold', 'crystals'])
+})
+
+export const createAuctionListingResponseDashboardPlayerTalentPointsDefault = 0;
+export const createAuctionListingResponseDashboardPlayerTelegramLinkedDefault = false;
+
+export const CreateAuctionListingResponse = zod.object({
+  "message": zod.string(),
+  "dashboard": zod.object({
+  "player": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "heroClass": zod.string(),
+  "classId": zod.string(),
+  "talentPoints": zod.number().int().default(createAuctionListingResponseDashboardPlayerTalentPointsDefault),
+  "unlockedTalents": zod.array(zod.string()),
+  "telegramLinked": zod.boolean().default(createAuctionListingResponseDashboardPlayerTelegramLinkedDefault),
+  "level": zod.number().int(),
+  "xp": zod.number().int(),
+  "xpToNext": zod.number().int(),
+  "gold": zod.number().int(),
+  "crystals": zod.number().int(),
+  "health": zod.number().int(),
+  "maxHealth": zod.number().int(),
+  "attack": zod.number().int(),
+  "realm": zod.string(),
+  "title": zod.string(),
+  "guildName": zod.string().nullable(),
+  "spouseName": zod.string().nullable(),
+  "vip": zod.boolean()
+}),
+  "inventory": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "rarity": zod.string(),
+  "category": zod.string(),
+  "equipped": zod.boolean(),
+  "attack": zod.number().int(),
+  "defense": zod.number().int(),
+  "price": zod.number().int(),
+  "quantity": zod.number().int()
+})),
+  "pets": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "species": zod.string(),
+  "level": zod.number().int(),
+  "rarity": zod.string(),
+  "attack": zod.number().int(),
+  "health": zod.number().int(),
+  "experience": zod.number().int(),
+  "active": zod.boolean(),
+  "vip": zod.boolean(),
+  "evolution": zod.string()
+})),
+  "marriageHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "partnerName": zod.string(),
+  "marriedAt": zod.coerce.date(),
+  "divorcedAt": zod.coerce.date().nullable(),
+  "durationDays": zod.number().int()
+})),
+  "activity": zod.array(zod.object({
+  "id": zod.string(),
+  "message": zod.string(),
+  "category": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "worldBoss": zod.object({
+  "name": zod.string(),
+  "phase": zod.number().int(),
+  "health": zod.number().int(),
+  "maxHealth": zod.number().int(),
+  "participants": zod.number().int()
+}),
+  "leaderboard": zod.array(zod.object({
+  "rank": zod.number().int(),
+  "name": zod.string(),
+  "heroClass": zod.string(),
+  "level": zod.number().int(),
+  "score": zod.number().int()
+})),
+  "shop": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "description": zod.string(),
+  "price": zod.number().int(),
+  "currency": zod.string(),
+  "rarity": zod.string()
+})),
+  "classes": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "description": zod.string(),
+  "passive": zod.string(),
+  "branches": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "talents": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "cost": zod.number().int(),
+  "requires": zod.string().nullable(),
+  "effectType": zod.enum(['attack', 'critical', 'guard', 'healing', 'resource', 'control']),
+  "effectValue": zod.number().int()
+}))
+}))
+})),
+  "recipes": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "requiredLevel": zod.number().int(),
+  "goldCost": zod.number().int(),
+  "ingredients": zod.array(zod.object({
+  "itemId": zod.string(),
+  "name": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "result": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "rarity": zod.string(),
+  "category": zod.string(),
+  "equipped": zod.boolean(),
+  "attack": zod.number().int(),
+  "defense": zod.number().int(),
+  "price": zod.number().int(),
+  "quantity": zod.number().int()
+})
+}))
+})
+})
+
+
+/**
+ * @summary Купить лот у другого игрока
+ */
+export const BuyAuctionListingParams = zod.object({
+  "listingId": zod.coerce.string().uuid()
+})
+
+export const BuyAuctionListingBody = zod.object({
+  "playerId": zod.string()
+})
+
+export const buyAuctionListingResponseDashboardPlayerTalentPointsDefault = 0;
+export const buyAuctionListingResponseDashboardPlayerTelegramLinkedDefault = false;
+
+export const BuyAuctionListingResponse = zod.object({
+  "message": zod.string(),
+  "dashboard": zod.object({
+  "player": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "heroClass": zod.string(),
+  "classId": zod.string(),
+  "talentPoints": zod.number().int().default(buyAuctionListingResponseDashboardPlayerTalentPointsDefault),
+  "unlockedTalents": zod.array(zod.string()),
+  "telegramLinked": zod.boolean().default(buyAuctionListingResponseDashboardPlayerTelegramLinkedDefault),
+  "level": zod.number().int(),
+  "xp": zod.number().int(),
+  "xpToNext": zod.number().int(),
+  "gold": zod.number().int(),
+  "crystals": zod.number().int(),
+  "health": zod.number().int(),
+  "maxHealth": zod.number().int(),
+  "attack": zod.number().int(),
+  "realm": zod.string(),
+  "title": zod.string(),
+  "guildName": zod.string().nullable(),
+  "spouseName": zod.string().nullable(),
+  "vip": zod.boolean()
+}),
+  "inventory": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "rarity": zod.string(),
+  "category": zod.string(),
+  "equipped": zod.boolean(),
+  "attack": zod.number().int(),
+  "defense": zod.number().int(),
+  "price": zod.number().int(),
+  "quantity": zod.number().int()
+})),
+  "pets": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "species": zod.string(),
+  "level": zod.number().int(),
+  "rarity": zod.string(),
+  "attack": zod.number().int(),
+  "health": zod.number().int(),
+  "experience": zod.number().int(),
+  "active": zod.boolean(),
+  "vip": zod.boolean(),
+  "evolution": zod.string()
+})),
+  "marriageHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "partnerName": zod.string(),
+  "marriedAt": zod.coerce.date(),
+  "divorcedAt": zod.coerce.date().nullable(),
+  "durationDays": zod.number().int()
+})),
+  "activity": zod.array(zod.object({
+  "id": zod.string(),
+  "message": zod.string(),
+  "category": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "worldBoss": zod.object({
+  "name": zod.string(),
+  "phase": zod.number().int(),
+  "health": zod.number().int(),
+  "maxHealth": zod.number().int(),
+  "participants": zod.number().int()
+}),
+  "leaderboard": zod.array(zod.object({
+  "rank": zod.number().int(),
+  "name": zod.string(),
+  "heroClass": zod.string(),
+  "level": zod.number().int(),
+  "score": zod.number().int()
+})),
+  "shop": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "description": zod.string(),
+  "price": zod.number().int(),
+  "currency": zod.string(),
+  "rarity": zod.string()
+})),
+  "classes": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "description": zod.string(),
+  "passive": zod.string(),
+  "branches": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "talents": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "cost": zod.number().int(),
+  "requires": zod.string().nullable(),
+  "effectType": zod.enum(['attack', 'critical', 'guard', 'healing', 'resource', 'control']),
+  "effectValue": zod.number().int()
+}))
+}))
+})),
+  "recipes": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "requiredLevel": zod.number().int(),
+  "goldCost": zod.number().int(),
+  "ingredients": zod.array(zod.object({
+  "itemId": zod.string(),
+  "name": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "result": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "rarity": zod.string(),
+  "category": zod.string(),
+  "equipped": zod.boolean(),
+  "attack": zod.number().int(),
+  "defense": zod.number().int(),
+  "price": zod.number().int(),
+  "quantity": zod.number().int()
+})
+}))
+})
+})
+
+
+/**
+ * @summary Снять свой лот с торгов
+ */
+export const CancelAuctionListingParams = zod.object({
+  "listingId": zod.coerce.string().uuid()
+})
+
+export const CancelAuctionListingBody = zod.object({
+  "playerId": zod.string()
+})
+
+export const cancelAuctionListingResponseDashboardPlayerTalentPointsDefault = 0;
+export const cancelAuctionListingResponseDashboardPlayerTelegramLinkedDefault = false;
+
+export const CancelAuctionListingResponse = zod.object({
+  "message": zod.string(),
+  "dashboard": zod.object({
+  "player": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "heroClass": zod.string(),
+  "classId": zod.string(),
+  "talentPoints": zod.number().int().default(cancelAuctionListingResponseDashboardPlayerTalentPointsDefault),
+  "unlockedTalents": zod.array(zod.string()),
+  "telegramLinked": zod.boolean().default(cancelAuctionListingResponseDashboardPlayerTelegramLinkedDefault),
+  "level": zod.number().int(),
+  "xp": zod.number().int(),
+  "xpToNext": zod.number().int(),
+  "gold": zod.number().int(),
+  "crystals": zod.number().int(),
+  "health": zod.number().int(),
+  "maxHealth": zod.number().int(),
+  "attack": zod.number().int(),
+  "realm": zod.string(),
+  "title": zod.string(),
+  "guildName": zod.string().nullable(),
+  "spouseName": zod.string().nullable(),
+  "vip": zod.boolean()
+}),
+  "inventory": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "rarity": zod.string(),
+  "category": zod.string(),
+  "equipped": zod.boolean(),
+  "attack": zod.number().int(),
+  "defense": zod.number().int(),
+  "price": zod.number().int(),
+  "quantity": zod.number().int()
+})),
+  "pets": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "species": zod.string(),
+  "level": zod.number().int(),
+  "rarity": zod.string(),
+  "attack": zod.number().int(),
+  "health": zod.number().int(),
+  "experience": zod.number().int(),
+  "active": zod.boolean(),
+  "vip": zod.boolean(),
+  "evolution": zod.string()
+})),
+  "marriageHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "partnerName": zod.string(),
+  "marriedAt": zod.coerce.date(),
+  "divorcedAt": zod.coerce.date().nullable(),
+  "durationDays": zod.number().int()
+})),
+  "activity": zod.array(zod.object({
+  "id": zod.string(),
+  "message": zod.string(),
+  "category": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "worldBoss": zod.object({
+  "name": zod.string(),
+  "phase": zod.number().int(),
+  "health": zod.number().int(),
+  "maxHealth": zod.number().int(),
+  "participants": zod.number().int()
+}),
+  "leaderboard": zod.array(zod.object({
+  "rank": zod.number().int(),
+  "name": zod.string(),
+  "heroClass": zod.string(),
+  "level": zod.number().int(),
+  "score": zod.number().int()
+})),
+  "shop": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "description": zod.string(),
+  "price": zod.number().int(),
+  "currency": zod.string(),
+  "rarity": zod.string()
+})),
+  "classes": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "description": zod.string(),
+  "passive": zod.string(),
+  "branches": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "talents": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "cost": zod.number().int(),
+  "requires": zod.string().nullable(),
+  "effectType": zod.enum(['attack', 'critical', 'guard', 'healing', 'resource', 'control']),
+  "effectValue": zod.number().int()
+}))
+}))
+})),
+  "recipes": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "requiredLevel": zod.number().int(),
+  "goldCost": zod.number().int(),
+  "ingredients": zod.array(zod.object({
+  "itemId": zod.string(),
+  "name": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "result": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "icon": zod.string(),
+  "rarity": zod.string(),
+  "category": zod.string(),
+  "equipped": zod.boolean(),
+  "attack": zod.number().int(),
+  "defense": zod.number().int(),
+  "price": zod.number().int(),
+  "quantity": zod.number().int()
+})
+}))
+})
+})
+
+
+/**
+ * @summary Создать одноразовый код привязки Telegram
+ */
+export const StartTelegramLinkBody = zod.object({
+  "playerId": zod.string()
+})
+
+export const StartTelegramLinkResponse = zod.object({
+  "code": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "instructions": zod.string()
+})
+
+
+/**
+ * @summary Подтвердить привязку из Telegram-бота
+ */
+export const claimTelegramLinkBodyCodeMin = 6;
+export const claimTelegramLinkBodyCodeMax = 6;
+
+
+
+export const ClaimTelegramLinkBody = zod.object({
+  "code": zod.string().min(claimTelegramLinkBodyCodeMin).max(claimTelegramLinkBodyCodeMax),
+  "telegramUserId": zod.string(),
+  "telegramName": zod.string()
+})
+
+export const ClaimTelegramLinkResponse = zod.object({
+  "message": zod.string(),
+  "playerId": zod.string()
 })
 
 

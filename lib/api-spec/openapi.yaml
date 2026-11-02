@@ -67,6 +67,152 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /game/auction:
+    get:
+      operationId: getAuctionListings
+      tags: [game]
+      summary: Получить активные лоты аукциона
+      parameters:
+        - name: playerId
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Лоты и комиссия рынка
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuctionListingsResponse"
+    post:
+      operationId: createAuctionListing
+      tags: [game]
+      summary: Выставить предмет на аукцион
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAuctionListingInput"
+      responses:
+        "201":
+          description: Лот создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuctionActionResult"
+        "400":
+          description: Предмет нельзя выставить
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /game/auction/{listingId}/buy:
+    post:
+      operationId: buyAuctionListing
+      tags: [game]
+      summary: Купить лот у другого игрока
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuctionPlayerInput"
+      responses:
+        "200":
+          description: Лот куплен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuctionActionResult"
+        "400":
+          description: Сделка недоступна
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /game/auction/{listingId}/cancel:
+    post:
+      operationId: cancelAuctionListing
+      tags: [game]
+      summary: Снять свой лот с торгов
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuctionPlayerInput"
+      responses:
+        "200":
+          description: Лот снят с торгов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuctionActionResult"
+        "400":
+          description: Лот нельзя снять
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /game/link/start:
+    post:
+      operationId: startTelegramLink
+      tags: [game]
+      summary: Создать одноразовый код привязки Telegram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartTelegramLinkInput"
+      responses:
+        "200":
+          description: Код действует десять минут
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramLinkStartResult"
+        "400":
+          description: Нельзя создать код
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /game/link/claim:
+    post:
+      operationId: claimTelegramLink
+      tags: [game]
+      summary: Подтвердить привязку из Telegram-бота
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClaimTelegramLinkInput"
+      responses:
+        "200":
+          description: Telegram-профиль связан с веб-профилем
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramLinkClaimResult"
+        "400":
+          description: Код истёк или уже использован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -88,6 +234,12 @@ components:
         id: { type: string }
         name: { type: string }
         heroClass: { type: string }
+        classId: { type: string }
+        talentPoints: { type: integer, default: 0 }
+        unlockedTalents:
+          type: array
+          items: { type: string }
+        telegramLinked: { type: boolean, default: false }
         level: { type: integer }
         xp: { type: integer }
         xpToNext: { type: integer }
@@ -101,7 +253,62 @@ components:
         guildName: { type: ["string", "null"] }
         spouseName: { type: ["string", "null"] }
         vip: { type: boolean }
-      required: [id, name, heroClass, level, xp, xpToNext, gold, crystals, health, maxHealth, attack, realm, title, guildName, spouseName, vip]
+      required: [id, name, heroClass, classId, talentPoints, unlockedTalents, telegramLinked, level, xp, xpToNext, gold, crystals, health, maxHealth, attack, realm, title, guildName, spouseName, vip]
+    GameTalent:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        cost: { type: integer }
+        requires: { type: ["string", "null"] }
+        effectType:
+          type: string
+          enum: [attack, critical, guard, healing, resource, control]
+        effectValue: { type: integer }
+      required: [id, name, description, cost, requires, effectType, effectValue]
+    TalentBranch:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        talents:
+          type: array
+          items: { $ref: "#/components/schemas/GameTalent" }
+      required: [id, name, description, talents]
+    GameClass:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role: { type: string }
+        description: { type: string }
+        passive: { type: string }
+        branches:
+          type: array
+          items: { $ref: "#/components/schemas/TalentBranch" }
+      required: [id, name, role, description, passive, branches]
+    RecipeIngredient:
+      type: object
+      properties:
+        itemId: { type: string }
+        name: { type: string }
+        quantity: { type: integer }
+      required: [itemId, name, quantity]
+    GameRecipe:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        requiredLevel: { type: integer }
+        goldCost: { type: integer }
+        ingredients:
+          type: array
+          items: { $ref: "#/components/schemas/RecipeIngredient" }
+        result: { $ref: "#/components/schemas/GameItem" }
+      required: [id, name, description, requiredLevel, goldCost, ingredients, result]
     GameItem:
       type: object
       properties:
@@ -200,7 +407,13 @@ components:
         shop:
           type: array
           items: { $ref: "#/components/schemas/ShopItem" }
-      required: [player, inventory, pets, marriageHistory, activity, worldBoss, leaderboard, shop]
+        classes:
+          type: array
+          items: { $ref: "#/components/schemas/GameClass" }
+        recipes:
+          type: array
+          items: { $ref: "#/components/schemas/GameRecipe" }
+      required: [player, inventory, pets, marriageHistory, activity, worldBoss, leaderboard, shop, classes, recipes]
     GameActionInput:
       type: object
       properties:
@@ -208,7 +421,7 @@ components:
         playerName: { type: string }
         action:
           type: string
-          enum: [register, claim_daily, battle, equip_item, buy_item, feed_pet, evolve_pet, raid_attack, marriage_propose, marriage_divorce, join_guild]
+          enum: [register, claim_daily, battle, equip_item, buy_item, feed_pet, evolve_pet, raid_attack, marriage_propose, marriage_divorce, join_guild, select_class, unlock_talent, craft_item]
         targetId: { type: string }
         targetName: { type: string }
       required: [action]
@@ -218,4 +431,74 @@ components:
         message: { type: string }
         dashboard: { $ref: "#/components/schemas/GameDashboard" }
       required: [message, dashboard]
+    AuctionListing:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sellerName: { type: string }
+        item: { $ref: "#/components/schemas/GameItem" }
+        quantity: { type: integer }
+        price: { type: integer }
+        currency:
+          type: string
+          enum: [gold, crystals]
+        isMine: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+      required: [id, sellerName, item, quantity, price, currency, isMine, createdAt, expiresAt]
+    AuctionListingsResponse:
+      type: object
+      properties:
+        listings:
+          type: array
+          items: { $ref: "#/components/schemas/AuctionListing" }
+        feePercent: { type: integer }
+      required: [listings, feePercent]
+    CreateAuctionListingInput:
+      type: object
+      properties:
+        playerId: { type: string }
+        itemId: { type: string }
+        quantity: { type: integer, minimum: 1, maximum: 99 }
+        price: { type: integer, minimum: 1, maximum: 1000000000 }
+        currency:
+          type: string
+          enum: [gold, crystals]
+      required: [playerId, itemId, quantity, price, currency]
+    AuctionPlayerInput:
+      type: object
+      properties:
+        playerId: { type: string }
+      required: [playerId]
+    AuctionActionResult:
+      type: object
+      properties:
+        message: { type: string }
+        dashboard: { $ref: "#/components/schemas/GameDashboard" }
+      required: [message, dashboard]
+    StartTelegramLinkInput:
+      type: object
+      properties:
+        playerId: { type: string }
+      required: [playerId]
+    TelegramLinkStartResult:
+      type: object
+      properties:
+        code: { type: string }
+        expiresAt: { type: string, format: date-time }
+        instructions: { type: string }
+      required: [code, expiresAt, instructions]
+    ClaimTelegramLinkInput:
+      type: object
+      properties:
+        code: { type: string, minLength: 6, maxLength: 6 }
+        telegramUserId: { type: string }
+        telegramName: { type: string }
+      required: [code, telegramUserId, telegramName]
+    TelegramLinkClaimResult:
+      type: object
+      properties:
+        message: { type: string }
+        playerId: { type: string }
+      required: [message, playerId]
 

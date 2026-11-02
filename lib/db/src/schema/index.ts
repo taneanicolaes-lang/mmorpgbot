@@ -18,3 +18,6 @@
 //   export type Post = typeof postsTable.$inferSelect;
 
 export * from "./game-profiles";
+export * from "./game-auction-listings";
+export * from "./game-account-links";
+export * from "./game-link-challenges";

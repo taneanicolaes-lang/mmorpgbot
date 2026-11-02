@@ -21,4 +21,7 @@ export const GameActionInputAction = {
   marriage_propose: 'marriage_propose',
   marriage_divorce: 'marriage_divorce',
   join_guild: 'join_guild',
+  select_class: 'select_class',
+  unlock_talent: 'unlock_talent',
+  craft_item: 'craft_item',
 } as const;

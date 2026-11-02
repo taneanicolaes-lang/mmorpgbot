@@ -6,18 +6,36 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './auctionActionResult';
+export * from './auctionListing';
+export * from './auctionListingCurrency';
+export * from './auctionListingsResponse';
+export * from './auctionPlayerInput';
+export * from './claimTelegramLinkInput';
+export * from './createAuctionListingInput';
+export * from './createAuctionListingInputCurrency';
 export * from './errorResponse';
 export * from './gameActionInput';
 export * from './gameActionInputAction';
 export * from './gameActionResult';
 export * from './gameActivity';
+export * from './gameClass';
 export * from './gameDashboard';
 export * from './gameItem';
 export * from './gamePet';
 export * from './gamePlayer';
+export * from './gameRecipe';
+export * from './gameTalent';
+export * from './gameTalentEffectType';
+export * from './getAuctionListingsParams';
 export * from './getGameDashboardParams';
 export * from './healthStatus';
 export * from './leaderboardEntry';
 export * from './marriageRecord';
+export * from './recipeIngredient';
 export * from './shopItem';
+export * from './startTelegramLinkInput';
+export * from './talentBranch';
+export * from './telegramLinkClaimResult';
+export * from './telegramLinkStartResult';
 export * from './worldBoss';

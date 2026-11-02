@@ -10,6 +10,10 @@ export interface GamePlayer {
   id: string;
   name: string;
   heroClass: string;
+  classId: string;
+  talentPoints: number;
+  unlockedTalents: string[];
+  telegramLinked: boolean;
   level: number;
   xp: number;
   xpToNext: number;

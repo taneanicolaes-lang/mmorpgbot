@@ -17,6 +17,10 @@ export interface GamePlayer {
   id: string;
   name: string;
   heroClass: string;
+  classId: string;
+  talentPoints: number;
+  unlockedTalents: string[];
+  telegramLinked: boolean;
   level: number;
   xp: number;
   xpToNext: number;
@@ -34,6 +38,51 @@ export interface GamePlayer {
   vip: boolean;
 }
 
+export type GameTalentEffectType = typeof GameTalentEffectType[keyof typeof GameTalentEffectType];
+
+
+export const GameTalentEffectType = {
+  attack: 'attack',
+  critical: 'critical',
+  guard: 'guard',
+  healing: 'healing',
+  resource: 'resource',
+  control: 'control',
+} as const;
+
+export interface GameTalent {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  /** @nullable */
+  requires: string | null;
+  effectType: GameTalentEffectType;
+  effectValue: number;
+}
+
+export interface TalentBranch {
+  id: string;
+  name: string;
+  description: string;
+  talents: GameTalent[];
+}
+
+export interface GameClass {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  passive: string;
+  branches: TalentBranch[];
+}
+
+export interface RecipeIngredient {
+  itemId: string;
+  name: string;
+  quantity: number;
+}
+
 export interface GameItem {
   id: string;
   name: string;
@@ -45,6 +94,16 @@ export interface GameItem {
   defense: number;
   price: number;
   quantity: number;
+}
+
+export interface GameRecipe {
+  id: string;
+  name: string;
+  description: string;
+  requiredLevel: number;
+  goldCost: number;
+  ingredients: RecipeIngredient[];
+  result: GameItem;
 }
 
 export interface GamePet {
@@ -112,6 +171,8 @@ export interface GameDashboard {
   worldBoss: WorldBoss;
   leaderboard: LeaderboardEntry[];
   shop: ShopItem[];
+  classes: GameClass[];
+  recipes: GameRecipe[];
 }
 
 export type GameActionInputAction = typeof GameActionInputAction[keyof typeof GameActionInputAction];
@@ -129,6 +190,9 @@ export const GameActionInputAction = {
   marriage_propose: 'marriage_propose',
   marriage_divorce: 'marriage_divorce',
   join_guild: 'join_guild',
+  select_class: 'select_class',
+  unlock_talent: 'unlock_talent',
+  craft_item: 'craft_item',
 } as const;
 
 export interface GameActionInput {
@@ -144,7 +208,94 @@ export interface GameActionResult {
   dashboard: GameDashboard;
 }
 
+export type AuctionListingCurrency = typeof AuctionListingCurrency[keyof typeof AuctionListingCurrency];
+
+
+export const AuctionListingCurrency = {
+  gold: 'gold',
+  crystals: 'crystals',
+} as const;
+
+export interface AuctionListing {
+  id: string;
+  sellerName: string;
+  item: GameItem;
+  quantity: number;
+  price: number;
+  currency: AuctionListingCurrency;
+  isMine: boolean;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface AuctionListingsResponse {
+  listings: AuctionListing[];
+  feePercent: number;
+}
+
+export type CreateAuctionListingInputCurrency = typeof CreateAuctionListingInputCurrency[keyof typeof CreateAuctionListingInputCurrency];
+
+
+export const CreateAuctionListingInputCurrency = {
+  gold: 'gold',
+  crystals: 'crystals',
+} as const;
+
+export interface CreateAuctionListingInput {
+  playerId: string;
+  itemId: string;
+  /**
+     * @minimum 1
+     * @maximum 99
+     */
+  quantity: number;
+  /**
+     * @minimum 1
+     * @maximum 1000000000
+     */
+  price: number;
+  currency: CreateAuctionListingInputCurrency;
+}
+
+export interface AuctionPlayerInput {
+  playerId: string;
+}
+
+export interface AuctionActionResult {
+  message: string;
+  dashboard: GameDashboard;
+}
+
+export interface StartTelegramLinkInput {
+  playerId: string;
+}
+
+export interface TelegramLinkStartResult {
+  code: string;
+  expiresAt: string;
+  instructions: string;
+}
+
+export interface ClaimTelegramLinkInput {
+  /**
+     * @minLength 6
+     * @maxLength 6
+     */
+  code: string;
+  telegramUserId: string;
+  telegramName: string;
+}
+
+export interface TelegramLinkClaimResult {
+  message: string;
+  playerId: string;
+}
+
 export type GetGameDashboardParams = {
+playerId?: string;
+};
+
+export type GetAuctionListingsParams = {
 playerId?: string;
 };
 
