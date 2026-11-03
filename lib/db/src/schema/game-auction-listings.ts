@@ -1,5 +1,6 @@
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
-import { index, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { check, index, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export const gameAuctionListingsTable = pgTable(
@@ -19,6 +20,10 @@ export const gameAuctionListingsTable = pgTable(
     soldAt: timestamp("sold_at", { withTimezone: true }),
   },
   (table) => [
+    check("game_auction_quantity_positive", sql`${table.quantity} > 0`),
+    check("game_auction_price_positive", sql`${table.price} > 0`),
+    check("game_auction_currency_check", sql`${table.currency} in ('gold', 'crystals')`),
+    check("game_auction_status_check", sql`${table.status} in ('active', 'sold', 'cancelled', 'expired')`),
     index("game_auction_status_expiry_idx").on(table.status, table.expiresAt),
     index("game_auction_seller_idx").on(table.sellerPlayerId, table.status),
   ],

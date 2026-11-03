@@ -267,6 +267,140 @@ export interface AuctionActionResult {
   dashboard: GameDashboard;
 }
 
+export interface GameGuildSummary {
+  id: string;
+  name: string;
+  description: string;
+  rating: number;
+  wins: number;
+  losses: number;
+  memberCount: number;
+}
+
+export type GameGuildMemberRole = typeof GameGuildMemberRole[keyof typeof GameGuildMemberRole];
+
+
+export const GameGuildMemberRole = {
+  leader: 'leader',
+  officer: 'officer',
+  member: 'member',
+} as const;
+
+export interface GameGuildMember {
+  playerId: string;
+  name: string;
+  heroClass: string;
+  level: number;
+  role: GameGuildMemberRole;
+  joinedAt: string;
+}
+
+export type GameGuildRank = GameGuildSummary & {
+  rank: number;
+};
+
+export type GameGuildWarStatus = typeof GameGuildWarStatus[keyof typeof GameGuildWarStatus];
+
+
+export const GameGuildWarStatus = {
+  active: 'active',
+  resolved: 'resolved',
+} as const;
+
+export interface GameGuildWar {
+  id: string;
+  attackerGuildId: string;
+  attackerGuildName: string;
+  defenderGuildId: string;
+  defenderGuildName: string;
+  attackerScore: number;
+  defenderScore: number;
+  status: GameGuildWarStatus;
+  /** @nullable */
+  winnerGuildId: string | null;
+  startsAt: string;
+  endsAt: string;
+  hasParticipated: boolean;
+}
+
+/**
+ * @nullable
+ */
+export type GameGuildDashboardYourRole = typeof GameGuildDashboardYourRole[keyof typeof GameGuildDashboardYourRole] | null;
+
+
+export const GameGuildDashboardYourRole = {
+  leader: 'leader',
+  officer: 'officer',
+  member: 'member',
+} as const;
+
+export interface GameGuildDashboard {
+  /** @nullable */
+  playerGuildId: string | null;
+  /** @nullable */
+  yourRole: GameGuildDashboardYourRole;
+  currentGuild: GameGuildSummary | null;
+  members: GameGuildMember[];
+  availableGuilds: GameGuildSummary[];
+  wars: GameGuildWar[];
+  ranking: GameGuildRank[];
+}
+
+export interface GameGuildActionResult {
+  message: string;
+}
+
+export interface CreateGameGuildInput {
+  playerId: string;
+  /**
+     * @minLength 3
+     * @maxLength 32
+     */
+  name: string;
+  /** @maxLength 200 */
+  description?: string;
+}
+
+export interface JoinGameGuildInput {
+  playerId: string;
+  guildId: string;
+}
+
+export interface LeaveGameGuildInput {
+  playerId: string;
+}
+
+export type ManageGameGuildMemberInputAction = typeof ManageGameGuildMemberInputAction[keyof typeof ManageGameGuildMemberInputAction];
+
+
+export const ManageGameGuildMemberInputAction = {
+  promote: 'promote',
+  demote: 'demote',
+  remove: 'remove',
+} as const;
+
+export interface ManageGameGuildMemberInput {
+  playerId: string;
+  targetPlayerId: string;
+  action: ManageGameGuildMemberInputAction;
+}
+
+export interface TransferGameGuildLeadershipInput {
+  playerId: string;
+  targetPlayerId: string;
+}
+
+export interface CreateGameGuildWarInput {
+  playerId: string;
+  targetGuildId: string;
+}
+
+export interface AttackGameGuildWarInput {
+  playerId: string;
+  warId: string;
+}
+
 export interface StartTelegramLinkInput {
   playerId: string;
 }
@@ -306,5 +440,9 @@ playerId?: string;
 
 export type GetAuctionListingsParams = {
 playerId?: string;
+};
+
+export type GetGameGuildsParams = {
+playerId: string;
 };
 

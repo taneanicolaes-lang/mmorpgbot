@@ -798,6 +798,169 @@ export const CancelAuctionListingResponse = zod.object({
 
 
 /**
+ * @summary Получить гильдию игрока, wars и рейтинг
+ */
+export const GetGameGuildsQueryParams = zod.object({
+  "playerId": zod.coerce.string()
+})
+
+export const GetGameGuildsResponse = zod.object({
+  "playerGuildId": zod.string().uuid().nullable(),
+  "yourRole": zod.union([zod.literal('leader'),zod.literal('officer'),zod.literal('member'),zod.literal(null)]).nullable(),
+  "currentGuild": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "rating": zod.number().int(),
+  "wins": zod.number().int(),
+  "losses": zod.number().int(),
+  "memberCount": zod.number().int()
+}),zod.null()]),
+  "members": zod.array(zod.object({
+  "playerId": zod.string(),
+  "name": zod.string(),
+  "heroClass": zod.string(),
+  "level": zod.number().int(),
+  "role": zod.enum(['leader', 'officer', 'member']),
+  "joinedAt": zod.coerce.date()
+})),
+  "availableGuilds": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "rating": zod.number().int(),
+  "wins": zod.number().int(),
+  "losses": zod.number().int(),
+  "memberCount": zod.number().int()
+})),
+  "wars": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "attackerGuildId": zod.string().uuid(),
+  "attackerGuildName": zod.string(),
+  "defenderGuildId": zod.string().uuid(),
+  "defenderGuildName": zod.string(),
+  "attackerScore": zod.number().int(),
+  "defenderScore": zod.number().int(),
+  "status": zod.enum(['active', 'resolved']),
+  "winnerGuildId": zod.string().uuid().nullable(),
+  "startsAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date(),
+  "hasParticipated": zod.boolean()
+})),
+  "ranking": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "rating": zod.number().int(),
+  "wins": zod.number().int(),
+  "losses": zod.number().int(),
+  "memberCount": zod.number().int()
+}).and(zod.object({
+  "rank": zod.number().int()
+})))
+})
+
+
+/**
+ * @summary Создать гильдию
+ */
+export const createGameGuildBodyNameMin = 3;
+export const createGameGuildBodyNameMax = 32;
+
+export const createGameGuildBodyDescriptionMax = 200;
+
+
+
+export const CreateGameGuildBody = zod.object({
+  "playerId": zod.string(),
+  "name": zod.string().min(createGameGuildBodyNameMin).max(createGameGuildBodyNameMax),
+  "description": zod.string().max(createGameGuildBodyDescriptionMax).optional()
+})
+
+export const CreateGameGuildResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Вступить в открытую гильдию
+ */
+export const JoinGameGuildBody = zod.object({
+  "playerId": zod.string(),
+  "guildId": zod.string().uuid()
+})
+
+export const JoinGameGuildResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Выйти из гильдии
+ */
+export const LeaveGameGuildBody = zod.object({
+  "playerId": zod.string()
+})
+
+export const LeaveGameGuildResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Управлять участником гильдии
+ */
+export const ManageGameGuildMemberBody = zod.object({
+  "playerId": zod.string(),
+  "targetPlayerId": zod.string(),
+  "action": zod.enum(['promote', 'demote', 'remove'])
+})
+
+export const ManageGameGuildMemberResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Передать руководство гильдией
+ */
+export const TransferGameGuildLeadershipBody = zod.object({
+  "playerId": zod.string(),
+  "targetPlayerId": zod.string()
+})
+
+export const TransferGameGuildLeadershipResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Объявить войну другой гильдии
+ */
+export const CreateGameGuildWarBody = zod.object({
+  "playerId": zod.string(),
+  "targetGuildId": zod.string().uuid()
+})
+
+export const CreateGameGuildWarResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Внести вклад в войну гильдий
+ */
+export const AttackGameGuildWarBody = zod.object({
+  "playerId": zod.string(),
+  "warId": zod.string().uuid()
+})
+
+export const AttackGameGuildWarResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Создать одноразовый код привязки Telegram
  */
 export const StartTelegramLinkBody = zod.object({

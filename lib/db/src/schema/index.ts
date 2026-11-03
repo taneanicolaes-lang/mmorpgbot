@@ -22,3 +22,4 @@ export * from "./game-auction-listings";
 export * from "./game-account-links";
 export * from "./game-link-challenges";
 export * from "./game-link-attempts";
+export * from "./game-guilds";

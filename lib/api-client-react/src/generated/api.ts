@@ -25,21 +25,31 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AttackGameGuildWarInput,
   AuctionActionResult,
   AuctionListingsResponse,
   AuctionPlayerInput,
   ClaimTelegramLinkInput,
   CreateAuctionListingInput,
+  CreateGameGuildInput,
+  CreateGameGuildWarInput,
   ErrorResponse,
   GameActionInput,
   GameActionResult,
   GameDashboard,
+  GameGuildActionResult,
+  GameGuildDashboard,
   GetAuctionListingsParams,
   GetGameDashboardParams,
+  GetGameGuildsParams,
   HealthStatus,
+  JoinGameGuildInput,
+  LeaveGameGuildInput,
+  ManageGameGuildMemberInput,
   StartTelegramLinkInput,
   TelegramLinkClaimResult,
-  TelegramLinkStartResult
+  TelegramLinkStartResult,
+  TransferGameGuildLeadershipInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -739,6 +749,730 @@ export const useCancelAuctionListing = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCancelAuctionListingMutationOptions(options), queryClient);
+    }
+
+export const getGetGameGuildsUrl = (params: GetGameGuildsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/game/guilds?${stringifiedParams}` : `/api/game/guilds`
+}
+
+/**
+ * @summary Получить гильдию игрока, wars и рейтинг
+ */
+export const getGameGuilds = async (params: GetGameGuildsParams, options?: Parameters<typeof customFetch>[1]): Promise<GameGuildDashboard> => {
+
+  return customFetch<GameGuildDashboard>(getGetGameGuildsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGameGuildsQueryKey = (params?: GetGameGuildsParams,) => {
+    return [
+    `/api/game/guilds`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGameGuildsQueryOptions = <TData = Awaited<ReturnType<typeof getGameGuilds>>, TError = ErrorType<ErrorResponse>>(params: GetGameGuildsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGameGuilds>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGameGuildsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGameGuilds>>> = ({ signal }) => getGameGuilds(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGameGuilds>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetGameGuildsQueryResult = NonNullable<Awaited<ReturnType<typeof getGameGuilds>>>
+export type GetGameGuildsQueryError = ErrorType<ErrorResponse>
+
+
+export function useGetGameGuilds<TData = Awaited<ReturnType<typeof getGameGuilds>>, TError = ErrorType<ErrorResponse>>(
+ params: GetGameGuildsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGameGuilds>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getGameGuilds>>,
+          TError,
+          Awaited<ReturnType<typeof getGameGuilds>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetGameGuilds<TData = Awaited<ReturnType<typeof getGameGuilds>>, TError = ErrorType<ErrorResponse>>(
+ params: GetGameGuildsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGameGuilds>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getGameGuilds>>,
+          TError,
+          Awaited<ReturnType<typeof getGameGuilds>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetGameGuilds<TData = Awaited<ReturnType<typeof getGameGuilds>>, TError = ErrorType<ErrorResponse>>(
+ params: GetGameGuildsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGameGuilds>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Получить гильдию игрока, wars и рейтинг
+ */
+
+export function useGetGameGuilds<TData = Awaited<ReturnType<typeof getGameGuilds>>, TError = ErrorType<ErrorResponse>>(
+ params: GetGameGuildsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getGameGuilds>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetGameGuildsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateGameGuildUrl = () => {
+
+
+
+
+  return `/api/game/guilds`
+}
+
+/**
+ * @summary Создать гильдию
+ */
+export const createGameGuild = async (createGameGuildInput: CreateGameGuildInput, options?: Parameters<typeof customFetch>[1]): Promise<GameGuildActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<GameGuildActionResult>(getCreateGameGuildUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createGameGuildInput)
+  }
+);}
+
+
+
+
+
+export const getCreateGameGuildMutationKey = () => ['createGameGuild'] as const;
+
+export const getCreateGameGuildMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGameGuild>>, TError,CreateGameGuildMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createGameGuild>>, TError,CreateGameGuildMutationVariables, TContext> => {
+
+const mutationKey = getCreateGameGuildMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGameGuild>>, CreateGameGuildMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createGameGuild(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateGameGuildMutationResult = NonNullable<Awaited<ReturnType<typeof createGameGuild>>>
+    export type CreateGameGuildMutationBody = BodyType<CreateGameGuildInput>
+    export type CreateGameGuildMutationError = ErrorType<ErrorResponse>
+    export type CreateGameGuildMutationVariables = {data: BodyType<CreateGameGuildInput>}
+
+    /**
+ * @summary Создать гильдию
+ */
+export const useCreateGameGuild = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGameGuild>>, TError,CreateGameGuildMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createGameGuild>>,
+        TError,
+        CreateGameGuildMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateGameGuildMutationOptions(options), queryClient);
+    }
+
+export const getJoinGameGuildUrl = () => {
+
+
+
+
+  return `/api/game/guilds/join`
+}
+
+/**
+ * @summary Вступить в открытую гильдию
+ */
+export const joinGameGuild = async (joinGameGuildInput: JoinGameGuildInput, options?: Parameters<typeof customFetch>[1]): Promise<GameGuildActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<GameGuildActionResult>(getJoinGameGuildUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(joinGameGuildInput)
+  }
+);}
+
+
+
+
+
+export const getJoinGameGuildMutationKey = () => ['joinGameGuild'] as const;
+
+export const getJoinGameGuildMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinGameGuild>>, TError,JoinGameGuildMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof joinGameGuild>>, TError,JoinGameGuildMutationVariables, TContext> => {
+
+const mutationKey = getJoinGameGuildMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof joinGameGuild>>, JoinGameGuildMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  joinGameGuild(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type JoinGameGuildMutationResult = NonNullable<Awaited<ReturnType<typeof joinGameGuild>>>
+    export type JoinGameGuildMutationBody = BodyType<JoinGameGuildInput>
+    export type JoinGameGuildMutationError = ErrorType<ErrorResponse>
+    export type JoinGameGuildMutationVariables = {data: BodyType<JoinGameGuildInput>}
+
+    /**
+ * @summary Вступить в открытую гильдию
+ */
+export const useJoinGameGuild = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinGameGuild>>, TError,JoinGameGuildMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof joinGameGuild>>,
+        TError,
+        JoinGameGuildMutationVariables,
+        TContext
+      > => {
+      return useMutation(getJoinGameGuildMutationOptions(options), queryClient);
+    }
+
+export const getLeaveGameGuildUrl = () => {
+
+
+
+
+  return `/api/game/guilds/leave`
+}
+
+/**
+ * @summary Выйти из гильдии
+ */
+export const leaveGameGuild = async (leaveGameGuildInput: LeaveGameGuildInput, options?: Parameters<typeof customFetch>[1]): Promise<GameGuildActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<GameGuildActionResult>(getLeaveGameGuildUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(leaveGameGuildInput)
+  }
+);}
+
+
+
+
+
+export const getLeaveGameGuildMutationKey = () => ['leaveGameGuild'] as const;
+
+export const getLeaveGameGuildMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveGameGuild>>, TError,LeaveGameGuildMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof leaveGameGuild>>, TError,LeaveGameGuildMutationVariables, TContext> => {
+
+const mutationKey = getLeaveGameGuildMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof leaveGameGuild>>, LeaveGameGuildMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  leaveGameGuild(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LeaveGameGuildMutationResult = NonNullable<Awaited<ReturnType<typeof leaveGameGuild>>>
+    export type LeaveGameGuildMutationBody = BodyType<LeaveGameGuildInput>
+    export type LeaveGameGuildMutationError = ErrorType<ErrorResponse>
+    export type LeaveGameGuildMutationVariables = {data: BodyType<LeaveGameGuildInput>}
+
+    /**
+ * @summary Выйти из гильдии
+ */
+export const useLeaveGameGuild = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveGameGuild>>, TError,LeaveGameGuildMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof leaveGameGuild>>,
+        TError,
+        LeaveGameGuildMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLeaveGameGuildMutationOptions(options), queryClient);
+    }
+
+export const getManageGameGuildMemberUrl = () => {
+
+
+
+
+  return `/api/game/guilds/members`
+}
+
+/**
+ * @summary Управлять участником гильдии
+ */
+export const manageGameGuildMember = async (manageGameGuildMemberInput: ManageGameGuildMemberInput, options?: Parameters<typeof customFetch>[1]): Promise<GameGuildActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<GameGuildActionResult>(getManageGameGuildMemberUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(manageGameGuildMemberInput)
+  }
+);}
+
+
+
+
+
+export const getManageGameGuildMemberMutationKey = () => ['manageGameGuildMember'] as const;
+
+export const getManageGameGuildMemberMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof manageGameGuildMember>>, TError,ManageGameGuildMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof manageGameGuildMember>>, TError,ManageGameGuildMemberMutationVariables, TContext> => {
+
+const mutationKey = getManageGameGuildMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof manageGameGuildMember>>, ManageGameGuildMemberMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  manageGameGuildMember(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ManageGameGuildMemberMutationResult = NonNullable<Awaited<ReturnType<typeof manageGameGuildMember>>>
+    export type ManageGameGuildMemberMutationBody = BodyType<ManageGameGuildMemberInput>
+    export type ManageGameGuildMemberMutationError = ErrorType<ErrorResponse>
+    export type ManageGameGuildMemberMutationVariables = {data: BodyType<ManageGameGuildMemberInput>}
+
+    /**
+ * @summary Управлять участником гильдии
+ */
+export const useManageGameGuildMember = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof manageGameGuildMember>>, TError,ManageGameGuildMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof manageGameGuildMember>>,
+        TError,
+        ManageGameGuildMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getManageGameGuildMemberMutationOptions(options), queryClient);
+    }
+
+export const getTransferGameGuildLeadershipUrl = () => {
+
+
+
+
+  return `/api/game/guilds/leadership`
+}
+
+/**
+ * @summary Передать руководство гильдией
+ */
+export const transferGameGuildLeadership = async (transferGameGuildLeadershipInput: TransferGameGuildLeadershipInput, options?: Parameters<typeof customFetch>[1]): Promise<GameGuildActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<GameGuildActionResult>(getTransferGameGuildLeadershipUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transferGameGuildLeadershipInput)
+  }
+);}
+
+
+
+
+
+export const getTransferGameGuildLeadershipMutationKey = () => ['transferGameGuildLeadership'] as const;
+
+export const getTransferGameGuildLeadershipMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transferGameGuildLeadership>>, TError,TransferGameGuildLeadershipMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof transferGameGuildLeadership>>, TError,TransferGameGuildLeadershipMutationVariables, TContext> => {
+
+const mutationKey = getTransferGameGuildLeadershipMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof transferGameGuildLeadership>>, TransferGameGuildLeadershipMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  transferGameGuildLeadership(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TransferGameGuildLeadershipMutationResult = NonNullable<Awaited<ReturnType<typeof transferGameGuildLeadership>>>
+    export type TransferGameGuildLeadershipMutationBody = BodyType<TransferGameGuildLeadershipInput>
+    export type TransferGameGuildLeadershipMutationError = ErrorType<ErrorResponse>
+    export type TransferGameGuildLeadershipMutationVariables = {data: BodyType<TransferGameGuildLeadershipInput>}
+
+    /**
+ * @summary Передать руководство гильдией
+ */
+export const useTransferGameGuildLeadership = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transferGameGuildLeadership>>, TError,TransferGameGuildLeadershipMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof transferGameGuildLeadership>>,
+        TError,
+        TransferGameGuildLeadershipMutationVariables,
+        TContext
+      > => {
+      return useMutation(getTransferGameGuildLeadershipMutationOptions(options), queryClient);
+    }
+
+export const getCreateGameGuildWarUrl = () => {
+
+
+
+
+  return `/api/game/guilds/wars`
+}
+
+/**
+ * @summary Объявить войну другой гильдии
+ */
+export const createGameGuildWar = async (createGameGuildWarInput: CreateGameGuildWarInput, options?: Parameters<typeof customFetch>[1]): Promise<GameGuildActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<GameGuildActionResult>(getCreateGameGuildWarUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createGameGuildWarInput)
+  }
+);}
+
+
+
+
+
+export const getCreateGameGuildWarMutationKey = () => ['createGameGuildWar'] as const;
+
+export const getCreateGameGuildWarMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGameGuildWar>>, TError,CreateGameGuildWarMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createGameGuildWar>>, TError,CreateGameGuildWarMutationVariables, TContext> => {
+
+const mutationKey = getCreateGameGuildWarMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGameGuildWar>>, CreateGameGuildWarMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createGameGuildWar(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateGameGuildWarMutationResult = NonNullable<Awaited<ReturnType<typeof createGameGuildWar>>>
+    export type CreateGameGuildWarMutationBody = BodyType<CreateGameGuildWarInput>
+    export type CreateGameGuildWarMutationError = ErrorType<ErrorResponse>
+    export type CreateGameGuildWarMutationVariables = {data: BodyType<CreateGameGuildWarInput>}
+
+    /**
+ * @summary Объявить войну другой гильдии
+ */
+export const useCreateGameGuildWar = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGameGuildWar>>, TError,CreateGameGuildWarMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createGameGuildWar>>,
+        TError,
+        CreateGameGuildWarMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateGameGuildWarMutationOptions(options), queryClient);
+    }
+
+export const getAttackGameGuildWarUrl = () => {
+
+
+
+
+  return `/api/game/guilds/wars/attack`
+}
+
+/**
+ * @summary Внести вклад в войну гильдий
+ */
+export const attackGameGuildWar = async (attackGameGuildWarInput: AttackGameGuildWarInput, options?: Parameters<typeof customFetch>[1]): Promise<GameGuildActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<GameGuildActionResult>(getAttackGameGuildWarUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(attackGameGuildWarInput)
+  }
+);}
+
+
+
+
+
+export const getAttackGameGuildWarMutationKey = () => ['attackGameGuildWar'] as const;
+
+export const getAttackGameGuildWarMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof attackGameGuildWar>>, TError,AttackGameGuildWarMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof attackGameGuildWar>>, TError,AttackGameGuildWarMutationVariables, TContext> => {
+
+const mutationKey = getAttackGameGuildWarMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof attackGameGuildWar>>, AttackGameGuildWarMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  attackGameGuildWar(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AttackGameGuildWarMutationResult = NonNullable<Awaited<ReturnType<typeof attackGameGuildWar>>>
+    export type AttackGameGuildWarMutationBody = BodyType<AttackGameGuildWarInput>
+    export type AttackGameGuildWarMutationError = ErrorType<ErrorResponse>
+    export type AttackGameGuildWarMutationVariables = {data: BodyType<AttackGameGuildWarInput>}
+
+    /**
+ * @summary Внести вклад в войну гильдий
+ */
+export const useAttackGameGuildWar = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof attackGameGuildWar>>, TError,AttackGameGuildWarMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof attackGameGuildWar>>,
+        TError,
+        AttackGameGuildWarMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAttackGameGuildWarMutationOptions(options), queryClient);
     }
 
 export const getStartTelegramLinkUrl = () => {

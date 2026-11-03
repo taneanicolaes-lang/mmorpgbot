@@ -165,6 +165,196 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /game/guilds:
+    get:
+      operationId: getGameGuilds
+      tags: [game]
+      summary: Получить гильдию игрока, wars и рейтинг
+      parameters:
+        - name: playerId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Состояние гильдий игрока
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameGuildDashboard"
+        "401":
+          description: Игрок не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createGameGuild
+      tags: [game]
+      summary: Создать гильдию
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGameGuildInput"
+      responses:
+        "201":
+          description: Гильдия создана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameGuildActionResult"
+        "400":
+          description: Название или состояние игрока недопустимо
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /game/guilds/join:
+    post:
+      operationId: joinGameGuild
+      tags: [game]
+      summary: Вступить в открытую гильдию
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinGameGuildInput"
+      responses:
+        "200":
+          description: Игрок вступил в гильдию
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameGuildActionResult"
+        "400":
+          description: Гильдия закрыта или заполнена
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /game/guilds/leave:
+    post:
+      operationId: leaveGameGuild
+      tags: [game]
+      summary: Выйти из гильдии
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaveGameGuildInput"
+      responses:
+        "200":
+          description: Игрок покинул гильдию
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameGuildActionResult"
+        "400":
+          description: Перед выходом лидер должен передать руководство
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /game/guilds/members:
+    post:
+      operationId: manageGameGuildMember
+      tags: [game]
+      summary: Управлять участником гильдии
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManageGameGuildMemberInput"
+      responses:
+        "200":
+          description: Состав гильдии обновлён
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameGuildActionResult"
+        "400":
+          description: Недостаточно прав
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /game/guilds/leadership:
+    post:
+      operationId: transferGameGuildLeadership
+      tags: [game]
+      summary: Передать руководство гильдией
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferGameGuildLeadershipInput"
+      responses:
+        "200":
+          description: Руководство передано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameGuildActionResult"
+        "400":
+          description: Нельзя передать руководство
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /game/guilds/wars:
+    post:
+      operationId: createGameGuildWar
+      tags: [game]
+      summary: Объявить войну другой гильдии
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGameGuildWarInput"
+      responses:
+        "201":
+          description: Война началась
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameGuildActionResult"
+        "400":
+          description: Нельзя начать войну
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /game/guilds/wars/attack:
+    post:
+      operationId: attackGameGuildWar
+      tags: [game]
+      summary: Внести вклад в войну гильдий
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttackGameGuildWarInput"
+      responses:
+        "200":
+          description: Вклад учтён
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameGuildActionResult"
+        "400":
+          description: Игрок уже участвовал или не состоит в воюющей гильдии
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /game/link/start:
     post:
       operationId: startTelegramLink
@@ -508,6 +698,125 @@ components:
         message: { type: string }
         dashboard: { $ref: "#/components/schemas/GameDashboard" }
       required: [message, dashboard]
+    GameGuildSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        rating: { type: integer }
+        wins: { type: integer }
+        losses: { type: integer }
+        memberCount: { type: integer }
+      required: [id, name, description, rating, wins, losses, memberCount]
+    GameGuildMember:
+      type: object
+      properties:
+        playerId: { type: string }
+        name: { type: string }
+        heroClass: { type: string }
+        level: { type: integer }
+        role:
+          type: string
+          enum: [leader, officer, member]
+        joinedAt: { type: string, format: date-time }
+      required: [playerId, name, heroClass, level, role, joinedAt]
+    GameGuildRank:
+      allOf:
+        - $ref: "#/components/schemas/GameGuildSummary"
+        - type: object
+          properties:
+            rank: { type: integer }
+          required: [rank]
+    GameGuildWar:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        attackerGuildId: { type: string, format: uuid }
+        attackerGuildName: { type: string }
+        defenderGuildId: { type: string, format: uuid }
+        defenderGuildName: { type: string }
+        attackerScore: { type: integer }
+        defenderScore: { type: integer }
+        status:
+          type: string
+          enum: [active, resolved]
+        winnerGuildId: { type: ["string", "null"], format: uuid }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        hasParticipated: { type: boolean }
+      required: [id, attackerGuildId, attackerGuildName, defenderGuildId, defenderGuildName, attackerScore, defenderScore, status, winnerGuildId, startsAt, endsAt, hasParticipated]
+    GameGuildDashboard:
+      type: object
+      properties:
+        playerGuildId: { type: ["string", "null"], format: uuid }
+        yourRole:
+          type: ["string", "null"]
+          enum: [leader, officer, member, null]
+        currentGuild: { oneOf: [{ $ref: "#/components/schemas/GameGuildSummary" }, { type: "null" }] }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/GameGuildMember" }
+        availableGuilds:
+          type: array
+          items: { $ref: "#/components/schemas/GameGuildSummary" }
+        wars:
+          type: array
+          items: { $ref: "#/components/schemas/GameGuildWar" }
+        ranking:
+          type: array
+          items: { $ref: "#/components/schemas/GameGuildRank" }
+      required: [playerGuildId, yourRole, currentGuild, members, availableGuilds, wars, ranking]
+    GameGuildActionResult:
+      type: object
+      properties:
+        message: { type: string }
+      required: [message]
+    CreateGameGuildInput:
+      type: object
+      properties:
+        playerId: { type: string }
+        name: { type: string, minLength: 3, maxLength: 32 }
+        description: { type: string, maxLength: 200 }
+      required: [playerId, name]
+    JoinGameGuildInput:
+      type: object
+      properties:
+        playerId: { type: string }
+        guildId: { type: string, format: uuid }
+      required: [playerId, guildId]
+    LeaveGameGuildInput:
+      type: object
+      properties:
+        playerId: { type: string }
+      required: [playerId]
+    ManageGameGuildMemberInput:
+      type: object
+      properties:
+        playerId: { type: string }
+        targetPlayerId: { type: string }
+        action:
+          type: string
+          enum: [promote, demote, remove]
+      required: [playerId, targetPlayerId, action]
+    TransferGameGuildLeadershipInput:
+      type: object
+      properties:
+        playerId: { type: string }
+        targetPlayerId: { type: string }
+      required: [playerId, targetPlayerId]
+    CreateGameGuildWarInput:
+      type: object
+      properties:
+        playerId: { type: string }
+        targetGuildId: { type: string, format: uuid }
+      required: [playerId, targetGuildId]
+    AttackGameGuildWarInput:
+      type: object
+      properties:
+        playerId: { type: string }
+        warId: { type: string, format: uuid }
+      required: [playerId, warId]
     StartTelegramLinkInput:
       type: object
       properties:
