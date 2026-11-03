@@ -189,6 +189,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Персонаж уже связан с Telegram
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Слишком частое создание кода
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /game/link/claim:
     post:
       operationId: claimTelegramLink
@@ -213,6 +225,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Подтверждение доступно только Telegram-боту
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Нужен выбор персонажа или аккаунт уже связан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Превышен лимит неверных кодов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -227,6 +257,8 @@ components:
       properties:
         error:
           type: string
+        conflict:
+          type: boolean
       required: [error]
     GamePlayer:
       type: object
@@ -491,9 +523,10 @@ components:
     ClaimTelegramLinkInput:
       type: object
       properties:
-        code: { type: string, minLength: 6, maxLength: 6 }
-        telegramUserId: { type: string }
-        telegramName: { type: string }
+        code: { type: string, pattern: "^[A-F0-9]{10}$" }
+        telegramUserId: { type: string, pattern: "^[0-9]{5,20}$" }
+        telegramName: { type: string, maxLength: 80 }
+        keepProfile: { type: string, enum: [web, telegram] }
       required: [code, telegramUserId, telegramName]
     TelegramLinkClaimResult:
       type: object

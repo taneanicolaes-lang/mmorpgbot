@@ -31,6 +31,12 @@ logger = logging.getLogger("pushok-bot")
 
 dp = Dispatcher()
 
+class ApiRequestError(RuntimeError):
+    def __init__(self, status: int, payload: dict[str, Any]) -> None:
+        super().__init__(payload.get("error", "Не удалось выполнить действие."))
+        self.status = status
+        self.payload = payload
+
 
 def player_id(message: Message | CallbackQuery) -> str:
     user = message.from_user
@@ -63,7 +69,7 @@ async def api_request(
             except aiohttp.ContentTypeError as exc:
                 raise RuntimeError("Игровой сервер вернул неверный ответ.") from exc
             if response.status >= 400:
-                raise RuntimeError(result.get("error", "Не удалось выполнить действие."))
+                raise ApiRequestError(response.status, result)
             return result
 
 
@@ -375,6 +381,43 @@ async def menu(message: Message) -> None:
         "Также работают короткие слова: дуэль, брак, дом, аукцион, питомцы, магазин, кузнец, рейд, гильдия.",
         reply_markup=main_menu(),
     )
+
+
+@dp.message(Command("link"))
+async def link_telegram_account(message: Message) -> None:
+    parts = (message.text or "").split()
+    if len(parts) not in (2, 3) or not re.fullmatch(r"[A-Fa-f0-9]{10}", parts[1]):
+        await message.answer("Используйте команду из веб-панели: /link КОД")
+        return
+    keep_profile = parts[2].lower() if len(parts) == 3 else None
+    if keep_profile not in (None, "web", "telegram"):
+        await message.answer("Выберите персонажа: /link КОД web или /link КОД telegram.")
+        return
+    user = message.from_user
+    if user is None:
+        await message.answer("Не удалось определить Telegram-аккаунт.")
+        return
+    payload: dict[str, Any] = {
+        "code": parts[1].upper(),
+        "telegramUserId": str(user.id),
+        "telegramName": user.full_name[:80],
+    }
+    if keep_profile:
+        payload["keepProfile"] = keep_profile
+    try:
+        result = await api_request("POST", "/game/link/claim", data=payload)
+    except ApiRequestError as exc:
+        if exc.status == 409 and exc.payload.get("conflict"):
+            await message.answer(
+                "В обоих профилях уже есть прогресс. Выберите, какого персонажа оставить активным:\n"
+                f"/link {parts[1].upper()} web — сохранить персонажа из веб-панели\n"
+                f"/link {parts[1].upper()} telegram — сохранить персонажа Telegram\n"
+                "Второй профиль останется в базе отдельно, но через эту связку будет доступен только выбранный."
+            )
+            return
+        await message.answer(safe(str(exc)))
+        return
+    await message.answer(safe(result["message"]), reply_markup=main_menu())
 
 
 @dp.message(Command("profile"))

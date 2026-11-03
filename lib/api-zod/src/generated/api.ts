@@ -814,15 +814,17 @@ export const StartTelegramLinkResponse = zod.object({
 /**
  * @summary Подтвердить привязку из Telegram-бота
  */
-export const claimTelegramLinkBodyCodeMin = 6;
-export const claimTelegramLinkBodyCodeMax = 6;
+export const claimTelegramLinkBodyCodeRegExp = new RegExp('^[A-F0-9]{10}$');
+export const claimTelegramLinkBodyTelegramUserIdRegExp = new RegExp('^[0-9]{5,20}$');
+export const claimTelegramLinkBodyTelegramNameMax = 80;
 
 
 
 export const ClaimTelegramLinkBody = zod.object({
-  "code": zod.string().min(claimTelegramLinkBodyCodeMin).max(claimTelegramLinkBodyCodeMax),
-  "telegramUserId": zod.string(),
-  "telegramName": zod.string()
+  "code": zod.string().regex(claimTelegramLinkBodyCodeRegExp),
+  "telegramUserId": zod.string().regex(claimTelegramLinkBodyTelegramUserIdRegExp),
+  "telegramName": zod.string().max(claimTelegramLinkBodyTelegramNameMax),
+  "keepProfile": zod.enum(['web', 'telegram']).optional()
 })
 
 export const ClaimTelegramLinkResponse = zod.object({

@@ -13,6 +13,7 @@
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `python artifacts/pushok-mmorpg/export_archive.py` — create a source archive in `generated-artifacts/`
 - Required env: `DATABASE_URL` and `BOT_TOKEN`; keep both out of source control and archives
+- Account linking: click **Привязать Telegram** in the dashboard, then send the displayed `/link CODE` command to the bot. Codes expire after ten minutes.
 
 ## Stack
 
@@ -36,7 +37,7 @@
 
 - The web panel and Telegram bot use the same game API and PostgreSQL profiles.
 - Browser-only profiles use unguessable local IDs; Telegram profiles use Telegram IDs and require the bot token for API access.
-- Web and Telegram profiles are not linked yet; account linking requires Telegram Mini App authentication.
+- Link a web character to Telegram with the dashboard's one-time code and `/link CODE` in the bot. If both profiles already have progress, choose `/link CODE web` or `/link CODE telegram`; the selected character becomes shared, while the other profile is retained separately in the database and is not available through this link.
 - The archive script excludes secrets, local dependencies, caches, and generated bundles.
 
 ## Product

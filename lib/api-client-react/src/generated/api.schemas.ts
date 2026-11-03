@@ -11,6 +11,7 @@ export interface HealthStatus {
 
 export interface ErrorResponse {
   error: string;
+  conflict?: boolean;
 }
 
 export interface GamePlayer {
@@ -276,14 +277,22 @@ export interface TelegramLinkStartResult {
   instructions: string;
 }
 
+export type ClaimTelegramLinkInputKeepProfile = typeof ClaimTelegramLinkInputKeepProfile[keyof typeof ClaimTelegramLinkInputKeepProfile];
+
+
+export const ClaimTelegramLinkInputKeepProfile = {
+  web: 'web',
+  telegram: 'telegram',
+} as const;
+
 export interface ClaimTelegramLinkInput {
-  /**
-     * @minLength 6
-     * @maxLength 6
-     */
+  /** @pattern ^[A-F0-9]{10}$ */
   code: string;
+  /** @pattern ^[0-9]{5,20}$ */
   telegramUserId: string;
+  /** @maxLength 80 */
   telegramName: string;
+  keepProfile?: ClaimTelegramLinkInputKeepProfile;
 }
 
 export interface TelegramLinkClaimResult {

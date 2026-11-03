@@ -5,13 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ClaimTelegramLinkInputKeepProfile } from './claimTelegramLinkInputKeepProfile';
 
 export interface ClaimTelegramLinkInput {
-  /**
-     * @minLength 6
-     * @maxLength 6
-     */
+  /** @pattern ^[A-F0-9]{10}$ */
   code: string;
+  /** @pattern ^[0-9]{5,20}$ */
   telegramUserId: string;
+  /** @maxLength 80 */
   telegramName: string;
+  keepProfile?: ClaimTelegramLinkInputKeepProfile;
 }

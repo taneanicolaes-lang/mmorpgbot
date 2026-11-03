@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import {
   getGetGameDashboardQueryKey, getHealthCheckQueryKey, useGetGameDashboard,
-  useHealthCheck, usePerformGameAction,
+  useHealthCheck, usePerformGameAction, useStartTelegramLink,
 } from '@workspace/api-client-react';
 import type { GameActionInput, GameDashboard, GameItem, GamePet } from '@workspace/api-client-react';
 import './index.css';
@@ -47,11 +47,13 @@ function AppShell() {
   const [registrationAttempted, setRegistrationAttempted] = useState(false);
   const [queryName, setQueryName] = useState('');
   const [notice, setNotice] = useState('');
+  const [linkCode, setLinkCode] = useState('');
+  const [linkExpiresAt, setLinkExpiresAt] = useState('');
   const queryClient = useQueryClient();
   const queryKey = getGetGameDashboardQueryKey({ playerId });
   const { data, isLoading, isError } = useGetGameDashboard(
     { playerId },
-    { query: { queryKey, retry: false, enabled: accountReady } },
+    { query: { queryKey, retry: false, enabled: accountReady, refetchInterval: linkCode ? 2500 : false } },
   );
   const { data: health } = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), refetchInterval: 60_000 } });
   const actionMutation = usePerformGameAction({
@@ -65,6 +67,32 @@ function AppShell() {
       onError: (error) => setNotice(error instanceof Error ? error.message : 'Не удалось выполнить действие. Попробуйте ещё раз.'),
     },
   });
+  const linkMutation = useStartTelegramLink({
+    mutation: {
+      onSuccess: (result) => {
+        setLinkCode(result.code);
+        setLinkExpiresAt(result.expiresAt);
+        setNotice(result.instructions);
+      },
+      onError: (error) => setNotice(error instanceof Error ? error.message : 'Не удалось создать код привязки.'),
+    },
+  });
+  useEffect(() => {
+    if (data?.player.telegramLinked) {
+      setLinkCode('');
+      setLinkExpiresAt('');
+    }
+  }, [data?.player.telegramLinked]);
+  useEffect(() => {
+    if (!linkCode || !linkExpiresAt) return;
+    const remaining = new Date(linkExpiresAt).getTime() - Date.now();
+    if (remaining <= 0) {
+      setLinkCode('');
+      return;
+    }
+    const timer = window.setTimeout(() => setLinkCode(''), remaining);
+    return () => window.clearTimeout(timer);
+  }, [linkCode, linkExpiresAt]);
   useEffect(() => {
     if (!registrationAttempted && !actionMutation.isPending) {
       setRegistrationAttempted(true);
@@ -130,6 +158,32 @@ function AppShell() {
         </header>
         <div className="mx-auto max-w-[1440px]">
           {notice && <div role="status" data-testid="status-action-message" className="fade-in mt-4 flex items-center justify-between rounded-lg border border-[#c7a964]/25 bg-[#c7a964]/[.08] px-4 py-3 text-xs text-[#e8d19a]"><span>{notice}</span><button data-testid="button-dismiss-message" className="text-slate-400 hover:text-white" onClick={() => setNotice('')} aria-label="Закрыть"><X size={15} /></button></div>}
+          <section className="glass mt-5 flex flex-col gap-4 rounded-xl p-4 sm:flex-row sm:items-center sm:justify-between" aria-label="Связь с Telegram">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#c9a85d]/20 bg-[#c9a85d]/[.08] text-[#d6bb75]"><Users size={16} /></div>
+              <div>
+                <h2 className="text-sm text-slate-200">{player.telegramLinked ? 'Telegram привязан' : 'Свяжите персонажа с Telegram'}</h2>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  {player.telegramLinked
+                    ? 'Бот и веб-панель используют одного персонажа.'
+                    : linkCode
+                      ? `Отправьте боту /link ${linkCode}. Код действует до ${new Date(linkExpiresAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}.`
+                      : 'Подтвердите привязку одноразовым кодом в Telegram-боте.'}
+                </p>
+              </div>
+            </div>
+            {!player.telegramLinked && (
+              <button
+                data-testid="button-start-telegram-link"
+                type="button"
+                disabled={linkMutation.isPending || Boolean(linkCode)}
+                onClick={() => linkMutation.mutate({ data: { playerId } })}
+                className="action-btn shrink-0 rounded-lg border border-[#c8a860]/30 bg-[#c8a860]/10 px-4 py-2.5 text-xs text-[#dfc77f] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {linkCode ? 'Ожидание подтверждения' : linkMutation.isPending ? 'Создаём код…' : 'Привязать Telegram'}
+              </button>
+            )}
+          </section>
           <div className="mb-6 mt-7 flex items-end justify-between">
             <div><div className="mb-1.5 text-[10px] uppercase tracking-[.24em] text-[#c4a761]">{player.title}</div><h1 className="font-display text-3xl font-medium tracking-[-.02em] text-[#f0ece4] sm:text-[38px]">{eyebrow}</h1></div>
             <div className="hidden items-center gap-2 text-[10px] text-slate-500 sm:flex"><span className={`h-1.5 w-1.5 rounded-full ${health?.status === 'ok' ? 'bg-[#7aa887] shadow-[0_0_10px_#7aa88788]' : 'bg-[#c77b63]'}`} /> {health?.status === 'ok' ? 'Мир активен' : 'Связь с миром...'}</div>

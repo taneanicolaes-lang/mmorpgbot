@@ -12,6 +12,7 @@ export * from './auctionListingCurrency';
 export * from './auctionListingsResponse';
 export * from './auctionPlayerInput';
 export * from './claimTelegramLinkInput';
+export * from './claimTelegramLinkInputKeepProfile';
 export * from './createAuctionListingInput';
 export * from './createAuctionListingInputCurrency';
 export * from './errorResponse';

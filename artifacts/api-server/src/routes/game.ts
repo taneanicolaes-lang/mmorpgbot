@@ -1,12 +1,20 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Router, type IRouter, type Request } from "express";
-import { eq } from "drizzle-orm";
-import { db, gameProfilesTable } from "@workspace/db";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import {
+  db,
+  gameAccountLinksTable,
+  gameLinkAttemptsTable,
+  gameLinkChallengesTable,
+  gameProfilesTable,
+} from "@workspace/db";
+import {
+  ClaimTelegramLinkBody,
   GetGameDashboardQueryParams,
   GetGameDashboardResponse,
   PerformGameActionBody,
   PerformGameActionResponse,
+  StartTelegramLinkBody,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -70,6 +78,10 @@ function createDashboard(playerId = "demo", name = "Эллиан"): Dashboard {
       id: playerId,
       name,
       heroClass: "Страж",
+      classId: "warrior",
+      talentPoints: 0,
+      unlockedTalents: [],
+      telegramLinked: false,
       level: demo ? 24 : 1,
       xp: demo ? 6_820 : 0,
       xpToNext: demo ? 8_000 : 500,
@@ -405,6 +417,8 @@ function createDashboard(playerId = "demo", name = "Эллиан"): Dashboard {
       { rank: 3, name: "Тихий Лис", heroClass: "Ассасин", level: 47, score: 13_940 },
     ],
     shop,
+    classes: [],
+    recipes: [],
   });
 }
 
@@ -487,26 +501,264 @@ function isBrowserPlayerId(playerId: string): boolean {
   );
 }
 
+function hashLinkCode(code: string): string {
+  return createHash("sha256").update(code).digest("hex");
+}
+
+async function resolvePlayerId(requestedId: string, fromBot: boolean): Promise<{
+  playerId: string;
+  telegramLinked: boolean;
+}> {
+  if (isBrowserPlayerId(requestedId)) {
+    const [link] = await db
+      .select({ playerId: gameAccountLinksTable.playerId })
+      .from(gameAccountLinksTable)
+      .where(eq(gameAccountLinksTable.webPlayerId, requestedId))
+      .limit(1);
+    return { playerId: link?.playerId ?? requestedId, telegramLinked: Boolean(link) };
+  }
+  if (fromBot && /^[0-9]{5,20}$/.test(requestedId)) {
+    const [link] = await db
+      .select({ playerId: gameAccountLinksTable.playerId })
+      .from(gameAccountLinksTable)
+      .where(eq(gameAccountLinksTable.telegramUserId, requestedId))
+      .limit(1);
+    return { playerId: link?.playerId ?? requestedId, telegramLinked: Boolean(link) };
+  }
+  return { playerId: requestedId, telegramLinked: false };
+}
+
+async function recordFailedLinkAttempt(telegramUserId: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const now = new Date();
+    await tx
+      .insert(gameLinkAttemptsTable)
+      .values({ telegramUserId, failedAttempts: 1, updatedAt: now })
+      .onConflictDoUpdate({
+        target: gameLinkAttemptsTable.telegramUserId,
+        set: {
+          failedAttempts: sql`${gameLinkAttemptsTable.failedAttempts} + 1`,
+          updatedAt: now,
+        },
+      });
+    const [attempt] = await tx
+      .select()
+      .from(gameLinkAttemptsTable)
+      .where(eq(gameLinkAttemptsTable.telegramUserId, telegramUserId))
+      .for("update")
+      .limit(1);
+    if (!attempt) return false;
+    if (attempt.lockedUntil && attempt.lockedUntil > now) return true;
+    if (attempt.failedAttempts >= 5) {
+      await tx
+        .update(gameLinkAttemptsTable)
+        .set({ lockedUntil: new Date(now.getTime() + 15 * 60_000) })
+        .where(eq(gameLinkAttemptsTable.telegramUserId, telegramUserId));
+      return true;
+    }
+    return false;
+  });
+}
+
+router.post("/game/link/start", async (req, res): Promise<void> => {
+  const parsed = StartTelegramLinkBody.safeParse(req.body);
+  if (!parsed.success || !isBrowserPlayerId(parsed.data.playerId)) {
+    res.status(400).json({ error: "Не удалось создать код привязки." });
+    return;
+  }
+  const { playerId } = parsed.data;
+  const [existingLink] = await db
+    .select({ telegramUserId: gameAccountLinksTable.telegramUserId })
+    .from(gameAccountLinksTable)
+    .where(eq(gameAccountLinksTable.webPlayerId, playerId))
+    .limit(1);
+  if (existingLink) {
+    res.status(409).json({ error: "К этому персонажу уже привязан Telegram." });
+    return;
+  }
+  const now = new Date();
+  const recent = await db
+    .select({ createdAt: gameLinkChallengesTable.createdAt })
+    .from(gameLinkChallengesTable)
+    .where(
+      and(
+        eq(gameLinkChallengesTable.playerId, playerId),
+        isNull(gameLinkChallengesTable.consumedAt),
+        gt(gameLinkChallengesTable.createdAt, new Date(now.getTime() - 30_000)),
+      ),
+    )
+    .limit(1);
+  if (recent.length) {
+    res.status(429).json({ error: "Подождите немного перед созданием нового кода." });
+    return;
+  }
+  await db
+    .update(gameLinkChallengesTable)
+    .set({ consumedAt: now })
+    .where(
+      and(
+        eq(gameLinkChallengesTable.playerId, playerId),
+        isNull(gameLinkChallengesTable.consumedAt),
+      ),
+    );
+  const code = randomBytes(5).toString("hex").toUpperCase();
+  const expiresAt = new Date(now.getTime() + 10 * 60_000);
+  await db.insert(gameLinkChallengesTable).values({
+    codeHash: hashLinkCode(code),
+    playerId,
+    expiresAt,
+  });
+  res.json({
+    code,
+    expiresAt: expiresAt.toISOString(),
+    instructions: `В Telegram отправьте боту команду /link ${code}. Код действует 10 минут.`,
+  });
+});
+
+router.post("/game/link/claim", async (req, res): Promise<void> => {
+  const parsed = ClaimTelegramLinkBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  if (!isBotRequest(req)) {
+    res.status(401).json({ error: "Подтвердить привязку можно только через Telegram-бота." });
+    return;
+  }
+  const { code, telegramUserId, telegramName, keepProfile } = parsed.data;
+  const [attempt] = await db
+    .select()
+    .from(gameLinkAttemptsTable)
+    .where(eq(gameLinkAttemptsTable.telegramUserId, telegramUserId))
+    .limit(1);
+  const now = new Date();
+  if (attempt?.lockedUntil && attempt.lockedUntil > now) {
+    res.status(429).json({ error: "Слишком много неверных кодов. Попробуйте через 15 минут." });
+    return;
+  }
+  if (attempt?.lockedUntil && attempt.lockedUntil <= now) {
+    await db
+      .update(gameLinkAttemptsTable)
+      .set({ failedAttempts: 0, lockedUntil: null, updatedAt: now })
+      .where(eq(gameLinkAttemptsTable.telegramUserId, telegramUserId));
+  }
+
+  const outcome = await db.transaction(async (tx) => {
+    const [challenge] = await tx
+      .select()
+      .from(gameLinkChallengesTable)
+      .where(eq(gameLinkChallengesTable.codeHash, hashLinkCode(code)))
+      .for("update")
+      .limit(1);
+    if (!challenge || challenge.consumedAt || challenge.expiresAt <= now) {
+      return { kind: "invalid" as const };
+    }
+    const [telegramLink] = await tx
+      .select()
+      .from(gameAccountLinksTable)
+      .where(eq(gameAccountLinksTable.telegramUserId, telegramUserId))
+      .limit(1);
+    const [webLink] = await tx
+      .select()
+      .from(gameAccountLinksTable)
+      .where(eq(gameAccountLinksTable.webPlayerId, challenge.playerId))
+      .limit(1);
+    if (telegramLink || webLink) {
+      return { kind: "already-linked" as const };
+    }
+
+    const [webProfile] = await tx
+      .select({ playerId: gameProfilesTable.playerId })
+      .from(gameProfilesTable)
+      .where(eq(gameProfilesTable.playerId, challenge.playerId))
+      .limit(1);
+    const [telegramProfile] = await tx
+      .select({ playerId: gameProfilesTable.playerId })
+      .from(gameProfilesTable)
+      .where(eq(gameProfilesTable.playerId, telegramUserId))
+      .limit(1);
+    if (webProfile && telegramProfile && !keepProfile) {
+      return { kind: "choose-profile" as const };
+    }
+
+    const canonicalPlayerId =
+      webProfile && telegramProfile && keepProfile === "telegram"
+        ? telegramUserId
+        : telegramProfile && !webProfile
+          ? telegramUserId
+          : challenge.playerId;
+    const inserted = await tx
+      .insert(gameAccountLinksTable)
+      .values({ telegramUserId, playerId: canonicalPlayerId, webPlayerId: challenge.playerId })
+      .onConflictDoNothing()
+      .returning({ playerId: gameAccountLinksTable.playerId });
+    if (!inserted.length) return { kind: "already-linked" as const };
+    await tx
+      .update(gameLinkChallengesTable)
+      .set({ consumedAt: now })
+      .where(eq(gameLinkChallengesTable.codeHash, challenge.codeHash));
+    return { kind: "success" as const, playerId: canonicalPlayerId };
+  });
+
+  if (outcome.kind === "invalid") {
+    const locked = await recordFailedLinkAttempt(telegramUserId);
+    res.status(locked ? 429 : 400).json({
+      error: locked
+        ? "Слишком много неверных кодов. Попробуйте через 15 минут."
+        : "Код неверен, истёк или уже использован.",
+    });
+    return;
+  }
+  if (outcome.kind === "already-linked") {
+    res.status(409).json({ error: "Этот Telegram или веб-профиль уже привязан к другому аккаунту." });
+    return;
+  }
+  if (outcome.kind === "choose-profile") {
+    res.status(409).json({
+      error: "В обоих профилях есть прогресс. Выберите общий профиль: /link КОД web или /link КОД telegram. Второй профиль останется в базе отдельно, но не будет доступен через эту связку.",
+      conflict: true,
+    });
+    return;
+  }
+  await db
+    .insert(gameLinkAttemptsTable)
+    .values({ telegramUserId, failedAttempts: 0, lockedUntil: null, updatedAt: now })
+    .onConflictDoUpdate({
+      target: gameLinkAttemptsTable.telegramUserId,
+      set: { failedAttempts: 0, lockedUntil: null, updatedAt: now },
+    });
+  res.json({
+    message: `Профиль Telegram ${telegramName} привязан. Выбранный персонаж теперь общий для бота и веб-панели. Другой профиль, если он был, останется отдельно в базе.`,
+    playerId: outcome.playerId,
+  });
+});
+
 router.get("/game/dashboard", async (req, res): Promise<void> => {
   const params = GetGameDashboardQueryParams.safeParse(req.query);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const playerId = params.data.playerId ?? "demo";
+  const requestedPlayerId = params.data.playerId ?? "demo";
   if (
-    playerId !== "demo" &&
-    !isBrowserPlayerId(playerId) &&
+    requestedPlayerId !== "demo" &&
+    !isBrowserPlayerId(requestedPlayerId) &&
+    !(isBotRequest(req) && /^[0-9]{5,20}$/.test(requestedPlayerId)) &&
     !isBotRequest(req)
   ) {
     res.status(401).json({ error: "Для этого профиля требуется авторизация Telegram." });
     return;
   }
+  const { playerId, telegramLinked } = await resolvePlayerId(
+    requestedPlayerId,
+    isBotRequest(req),
+  );
   const dashboard = await readDashboard(playerId);
   if (!dashboard) {
     res.status(404).json({ error: "Игрок не найден. Сначала отправьте /start боту." });
     return;
   }
+  dashboard.player.telegramLinked = telegramLinked;
   res.json(GetGameDashboardResponse.parse(dashboard));
 });
 
@@ -517,15 +769,18 @@ router.post("/game/action", async (req, res): Promise<void> => {
     return;
   }
   const input: ActionBody = parsed.data;
-  const playerId = input.playerId ?? "demo";
+  const requestedPlayerId = input.playerId ?? "demo";
   const fromBot = isBotRequest(req);
   if (
-    (playerId === "demo" && !fromBot) ||
-    (playerId !== "demo" && !isBrowserPlayerId(playerId) && !fromBot)
+    (requestedPlayerId === "demo" && !fromBot) ||
+    (requestedPlayerId !== "demo" &&
+      !isBrowserPlayerId(requestedPlayerId) &&
+      !(fromBot && /^[0-9]{5,20}$/.test(requestedPlayerId)))
   ) {
     res.status(401).json({ error: "Для этого профиля требуется авторизация Telegram." });
     return;
   }
+  const { playerId, telegramLinked } = await resolvePlayerId(requestedPlayerId, fromBot);
 
   let dashboard = await readDashboard(playerId);
   if (!dashboard && input.action !== "register") {
@@ -736,6 +991,7 @@ router.post("/game/action", async (req, res): Promise<void> => {
   }
 
   const saved = await saveDashboard(playerId, dashboard, lastDailyAt);
+  saved.player.telegramLinked = telegramLinked;
   res.json(
     PerformGameActionResponse.parse({
       message,
